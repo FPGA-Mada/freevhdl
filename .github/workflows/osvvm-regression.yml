@@ -33,6 +33,18 @@ jobs:
           cd ..
           ghdl --version
 
+          
+
+      # Regression tests with precise failure handling
+      - name: Run OSVVM interleave yuv test
+        run: |
+          set -e
+          tclsh script/regression_tcl_axi_master_slave.tcl 2>&1 | tee regression_tcl_axi_master_slave.log
+          if grep -q -e "FAILED" -e "FAILURE" -e "ERROR" regression_tcl_axi_master_slave.log; then
+            echo "❌ Test failed: regression_tcl_axi_master_slave.tcl"
+            exit 1
+          fi
+
       # Regression tests with precise failure handling
       - name: Run OSVVM interleave yuv test
         run: |
