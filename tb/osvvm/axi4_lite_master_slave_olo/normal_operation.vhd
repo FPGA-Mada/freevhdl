@@ -51,24 +51,19 @@ begin
     -- Initialization
     wait until nReset = '1';
     WaitForClock(ManagerRec, 2);
-
     for int_value in 0 to 1000 loop
         valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-		data_send := std_logic_vector (to_unsigned (int_value,AXI_DATA_WIDTH'length));
-        Write(ManagerRec, valu*4, data_send);
-      wait for 10 ns; -- Wait for 10 ns between values
+        data_send := std_logic_vector(to_unsigned(int_value, AXI_DATA_WIDTH));
+        Write(ManagerRec, valu * 4, data_send);
+        wait for 10 ns;
     end loop;
-
-
-    -- Read loop
     for int_value in 0 to 1000 loop
-      valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-      expect_data := std_logic_vector (to_unsigned (int_value,AXI_DATA_WIDTH'length));
-      Read(ManagerRec, valu*4, Data);
-      AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
-      wait for 10 ns; -- Wait for 10 ns between values
+        valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
+        expect_data := std_logic_vector(to_unsigned(int_value, AXI_DATA_WIDTH));
+        Read(ManagerRec, valu * 4, Data);
+        AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
+        wait for 10 ns;
     end loop;
-
     WaitForClock(ManagerRec, 2);
     WaitForBarrier(TestDone);
     wait;
