@@ -58,12 +58,19 @@ begin
         wait for 10 ns;
     end loop;
     for int_value in 0 to 10 loop
-        valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-        expect_data := std_logic_vector(to_unsigned(int_value, AXI_DATA_WIDTH));
-        Read(ManagerRec, valu * 4, Data);
-        AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
-        wait for 10 ns;
+      valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
+      expect_data := std_logic_vector(to_unsigned(int_value, AXI_DATA_WIDTH));
+
+      Read(ManagerRec, valu * 4, Data);
+
+      -- Log message with received data
+      Log("Received Data: " & to_hstring(Data));
+
+      AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
+
+      wait for 10 ns;
     end loop;
+
     WaitForClock(ManagerRec, 2);
     WaitForBarrier(TestDone);
     wait;
