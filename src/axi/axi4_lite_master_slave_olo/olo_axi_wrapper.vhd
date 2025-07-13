@@ -128,7 +128,7 @@ begin
     -----------------------------
   ram_int : entity work.ram_sdp 
   generic map (
-    Depth_g => width_mem, 
+    Depth_g => 100, 
     Width_g => AxiDataWidth_g,
     add_Width_g => AxiAddrWidth_g
   )
