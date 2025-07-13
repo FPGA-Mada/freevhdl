@@ -60,12 +60,7 @@ begin
     for int_value in 0 to 100 loop
       valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
       expect_data := std_logic_vector(to_unsigned(int_value, AXI_DATA_WIDTH));
-
       Read(ManagerRec, valu * 4, Data);
-
-      -- Log message with received data
-      Log("Received Data: " & to_hstring(Data));
-
       AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
       WaitForClock(ManagerRec, 2);
     end loop;
