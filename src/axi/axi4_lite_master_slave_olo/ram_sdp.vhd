@@ -57,8 +57,7 @@ begin
           end loop;
         end if;
       end if;
-
-      if rd_idx_axi >= 0 and rd_idx_axi < Depth_g then
+                                                
         if Rd_Ena = '1' then
           Rd_Data <= ram(rd_idx_axi);
           Rb_valid <= '1';
@@ -66,10 +65,6 @@ begin
           Rd_Data <= (others => '0');
           Rb_valid <= '0';
         end if;
-      else
-        Rd_Data <= (others => '0');
-        Rb_valid <= '0';
-      end if;
     end if;
   end process write_read;
   
