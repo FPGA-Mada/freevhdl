@@ -34,6 +34,7 @@ end ram_sdp;
 architecture rtl of ram_sdp is
 
   constant ByteCount_c : integer := Width_g / 8;
+  constant start_wr_index : integer := clog2(ByteCount_c);
 
   type ram_type is array (0 to Depth_g - 1) of std_logic_vector(Width_g - 1 downto 0);
   signal ram : ram_type := (others => (others => '0'));
@@ -52,8 +53,8 @@ begin
         Rd_Data  <= (others => '0');
         Rb_valid <= '0';
       else
-        wr_idx      := to_integer(unsigned(Wr_Addr(Wr_Addr'high downto 2)));
-        rd_idx_axi  := to_integer(unsigned(Rd_Addr(Rd_Addr'high downto 2)));
+        wr_idx      := to_integer(unsigned(Wr_Addr(Wr_Addr'high downto start_wr_index)));
+        rd_idx_axi  := to_integer(unsigned(Rd_Addr(Rd_Addr'high downto start_wr_index)));
 
         -- Write logic
         if Wr_Ena = '1' and wr_idx < Depth_g then
