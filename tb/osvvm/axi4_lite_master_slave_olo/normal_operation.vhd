@@ -53,44 +53,17 @@ begin
     WaitForClock(ManagerRec, 2);
 
     for int_value in 0 to 1000 loop
-          valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-	  addr_native := std_logic_vector (to_unsigned (int_value,addr_native'length));
-	  en_compl :=  '1';
-	  en := '0';					
-	  addr_compl := (others => '0');
-      data_send := en_compl & addr_compl & en & addr_native;
-      Write(ManagerRec, valu*4, data_send);
+        valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
+		data_send := std_logic_vector (to_unsigned (int_value,AXI_DATA_WIDTH'length));
+        Write(ManagerRec, valu*4, data_send);
       wait for 10 ns; -- Wait for 10 ns between values
     end loop;
 
-    -- Write loop
-    for int_value in 0 to 31 loop
-      valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-	  addr_native := std_logic_vector (to_unsigned (int_value,addr_native'length));
-	  en_compl :=  '0';
-	  if (int_value <16) then 
-		en := '0';
-	  else 
-		en := '1';
-	  end if;
-	  addr_compl := (others => '0');
-      data_send := en_compl & addr_compl & en & addr_native;
-      Write(ManagerRec, valu*4, data_send);
-      wait for 10 ns; -- Wait for 10 ns between values
-    end loop;
 
     -- Read loop
-    for int_value in 0 to 31 loop
+    for int_value in 0 to 1000 loop
       valu := std_logic_vector(to_unsigned(int_value, AXI_ADDR_WIDTH));
-	  addr_native := std_logic_vector (to_unsigned (int_value,addr_native'length));
-	  if (int_value <16) then 
-		en := '0';
-	  else 
-		en := '1';
-	  end if;
-	  en_compl :=  '0';
-	  addr_compl := (others => '0');
-      expect_data := en_compl & addr_compl & en & addr_native;
+      expect_data := std_logic_vector (to_unsigned (int_value,AXI_DATA_WIDTH'length));
       Read(ManagerRec, valu*4, Data);
       AffirmIfEqual(Data, expect_data, "Manager Read Data: ");
       wait for 10 ns; -- Wait for 10 ns between values
