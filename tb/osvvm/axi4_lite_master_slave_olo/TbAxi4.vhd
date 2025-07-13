@@ -58,7 +58,6 @@ architecture TestHarness of TbAxi4 is
     port (
       Clk            : in std_logic;
       nReset         : in std_logic;
-      StreamRxRec    : inout StreamRecType;
       ManagerRec     : inout AddressBusRecType;
       SubordinateRec : inout AddressBusRecType
     );
