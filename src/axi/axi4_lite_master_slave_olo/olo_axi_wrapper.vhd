@@ -134,6 +134,7 @@ begin
   )
   port map(
     Clk      => clk,
+    rst      => rst,
     --*** interface connected to AXI user interface
     Wr_Addr  => Rb_Addr,
     Byte_En  => Rb_ByteEna,
