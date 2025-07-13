@@ -56,7 +56,7 @@ begin
         rd_idx_axi  := to_integer(unsigned(Rd_Addr(Rd_Addr'high downto 2)));
 
         -- Write logic
-        if Wr_Ena = '1' and wr_idx < 100 then
+        if Wr_Ena = '1' and wr_idx < Depth_g then
           for i in 0 to ByteCount_c - 1 loop
             if Byte_En(i) = '1' then
               ram(wr_idx)((i + 1) * 8 - 1 downto i * 8) <= Wr_Data((i + 1) * 8 - 1 downto i * 8);
@@ -65,7 +65,7 @@ begin
         end if;
 
         -- Read logic
-        if Rd_Ena = '1' and rd_idx_axi < 100 then
+        if Rd_Ena = '1' and rd_idx_axi < Depth_g then
           Rd_Data  <= ram(rd_idx_axi);
           Rb_valid <= '1';
         else
