@@ -79,7 +79,7 @@ entity olo_axi_wrapper is
 end entity;
 
 architecture rtl of olo_axi_wrapper is
-    constant width_mem : natural := 2**AxiAddrWidth_g;
+    constant width_mem : natural := 200;
     -- Register bus between slave and master
     signal Rb_Addr     : std_logic_vector(AxiAddrWidth_g-1 downto 0);
     signal Rb_Wr       : std_logic;
