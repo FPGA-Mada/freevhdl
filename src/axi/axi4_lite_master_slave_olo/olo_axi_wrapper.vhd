@@ -128,66 +128,78 @@ architecture rtl of olo_axi_wrapper is
     signal data_index       : integer range 0 to 9 := 0;
     signal write_done       : boolean := false;
     signal Wr_Addr          : std_logic_vector (CmdWr_Addr'range);
-    type state_t is (IDLE, CONFIG_COM, SEND_TRANS);
-    signal state_axi_m : state_t := IDLE;
-
+    type t_wr_state is (WR_IDLE, WR_PREPARE, WR_WAIT_FIFO, WR_WAIT_READY, WR_SEND_CMD, WR_WAIT_DONE);
+    signal wr_state : t_wr_state := WR_IDLE;
+    signal rdata_sig : std_logic_vector (AxiDataWidth_g -1 downto 0);
+    signal rvalid_sig : std_logic;
 
 begin
 
-  
-  -----------------------------
-  -- AXI MASTER Write Process
-  -----------------------------
+   -----------------------------
+   -- AXI MASTER write MASTER
+   -----------------------------
+write_axi_m: process (Clk)
 
-  write_trans : process(clk)
-  begin
-    if rising_edge(clk) then
-      if rst = '1' then
-        CmdWr_Valid  <= '0';
-        CmdWr_Addr   <= (others => '0');
-        CmdWr_Size   <= (others => '0');
-        CmdWr_LowLat <= '1';
-        Wr_Valid     <= '0';
+begin
+  if rising_edge(Clk) then
+    if Rst = '1' then
+      Wr_Counter   <= 0;
+      Wr_Valid     <= '0';
+      CmdWr_Valid  <= '0';
+      Wr_Data      <= (others => '0');
+      Wr_Be        <= (others => '1');
+      CmdWr_LowLat <= '0';
+      wr_state     <= WR_IDLE;
+    else
+      case wr_state is
+        -- Wait for a new write operation
+        when WR_IDLE =>
+          if Wr_Counter < 10 then
+            Wr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
+            Wr_Data  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
+            wr_state <= WR_WAIT_FIFO;
+          end if;
 
-        Wr_Data      <= (others => '0');
-        Wr_Be        <= (others => '1');
-        Wr_Counter      <= 0;
-        state_axi_m  <= IDLE;
+        -- Wait for FIFO to accept write data
+        when WR_WAIT_FIFO =>
+          if Wr_Ready = '1' then
+            Wr_Valid <= '1';
+            wr_state <= WR_WAIT_READY;
+          end if;
 
-      else
-        -- Set constant signals every cycle
-        CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length)); -- 1 beat per write
-        CmdWr_LowLat <= '1';
-        Wr_Be        <= (others => '1');
+        -- Wait until data is accepted (handshake)
+        when WR_WAIT_READY =>
+          if Wr_Valid = '1' and Wr_Ready = '1' then
+            Wr_Valid <= '0';  -- Deassert valid after handshake
+            wr_state <= WR_SEND_CMD;
+          end if;
 
-        case state_axi_m is
-          when IDLE =>
-            if Wr_Counter < 10 then
-              Wr_Data  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
-              Wr_Valid <= '1';
+        -- Send write command to the AXI master
+        when WR_SEND_CMD =>
+          if CmdWr_Ready = '1' then
+            CmdWr_Addr   <= Wr_Addr;
+            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));  -- 1 beat
+            CmdWr_LowLat <= '1'; -- low-latency write
+            CmdWr_Valid  <= '1';
+            wr_state     <= WR_WAIT_DONE;
+          end if;
 
-              if Wr_Ready = '1' then
-                Wr_Valid    <= '0';
-                state_axi_m <= CONFIG_COM;
-              end if;
-            end if;
+        -- Wait for write to complete
+        when WR_WAIT_DONE =>
+          CmdWr_Valid <= '0';  -- One-shot signal
+          if Wr_Done = '1' or Wr_Error = '1' then
+            Wr_Counter <= Wr_Counter + 1;
+            wr_state   <= WR_IDLE;
+          end if;
 
-          when CONFIG_COM =>
-            CmdWr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, CmdWr_Addr'length));
-            CmdWr_Valid <= '1';
-
-            if CmdWr_Ready = '1' then
-              CmdWr_Valid <= '0';
-              Wr_Counter     <= Wr_Counter + 1;
-              state_axi_m <= IDLE;
-            end if;
-
-          when others =>
-            state_axi_m <= IDLE;
-        end case;
-      end if;
+        -- Fallback (should not be hit)
+        when others =>
+          wr_state <= WR_IDLE;
+      end case;
     end if;
-  end process;
+  end if;
+end process write_axi_m;
+                                                         
 -----------------------------
 -- AXI MASTER READ MASTER
 -----------------------------
@@ -201,6 +213,8 @@ begin
             CmdRd_Valid  <= '0';
             Rd_Ready     <= '1';
             read_counter <= 0;
+            rdata_sig <= (others => '0');
+            rvalid_sig <= '0';
         else
             CmdRd_Valid <= '0'; -- default deassert
             Rd_Ready    <= '1'; -- always ready to consume data
@@ -210,9 +224,13 @@ begin
                 CmdRd_Size   <= std_logic_vector(to_unsigned(1, CmdRd_Size'length));  -- 1 beat
                 CmdRd_LowLat <= '1';  -- fast mode
                 CmdRd_Valid  <= '1';
-
                 read_counter <= read_counter + 4;
             end if;
+            if (Rd_Valid = '1' and Rd_Ready = '1') then
+                rdata_sig <= Rd_Data;
+                rvalid_sig <= '1';
+            end if;
+            
         end if;
     end if;
 end process;
