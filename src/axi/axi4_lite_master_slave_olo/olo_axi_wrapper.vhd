@@ -162,24 +162,24 @@ write_data_proc : process(clk)
 begin
   if rising_edge(clk) then
     if rst = '1' then
-      Wr_Valid      <= '0';
-      Wr_Data       <= (others => '0');
-      Wr_Be         <= (others => '1');
-      data_index    <= 0;
-      write_done    <= false;
+      Wr_Valid    <= '0';
+      Wr_Data     <= (others => '0');
+      Wr_Be       <= (others => '1');
+      data_index  <= 0;
+      write_done  <= false;
     elsif cmd_sent and not write_done then
+      Wr_Valid <= '1'; -- Keep valid high until all data sent
+
       if Wr_Ready = '1' then
-        Wr_Data    <= std_logic_vector(to_unsigned(data_index * 4, Wr_Data'length));
-        Wr_Valid   <= '1';
-        Wr_Be      <= (others => '1');
+        Wr_Data <= std_logic_vector(to_unsigned(data_index * 4, Wr_Data'length)); 
+        Wr_Be   <= (others => '1');
 
         if data_index = 9 then
           write_done <= true;
+          Wr_Valid   <= '0'; -- last data beat
         else
           data_index <= data_index + 1;
         end if;
-      else
-        Wr_Valid <= '0'; -- stall until ready
       end if;
     else
       Wr_Valid <= '0';
