@@ -138,7 +138,7 @@ begin
    -----------------------------
    -- AXI MASTER write MASTER
    -----------------------------
- process (Clk)
+write_axi_m: process (Clk)
 begin
   if rising_edge(Clk) then
     if Rst = '1' then
@@ -151,6 +151,7 @@ begin
       wr_state     <= WR_IDLE;
     else
       case wr_state is
+        -- Wait for a new write operation
         when WR_IDLE =>
           if Wr_Counter < 10 then
             Wr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
@@ -158,40 +159,46 @@ begin
             wr_state <= WR_WAIT_FIFO;
           end if;
 
+        -- Wait for FIFO to accept write data
         when WR_WAIT_FIFO =>
           if Wr_Ready = '1' then
             Wr_Valid <= '1';
             wr_state <= WR_WAIT_READY;
           end if;
 
+        -- Wait until data is accepted (handshake)
         when WR_WAIT_READY =>
           if Wr_Valid = '1' and Wr_Ready = '1' then
-            Wr_Valid <= '0';  -- Deassert after handshake
+            Wr_Valid <= '0';  -- Deassert valid after handshake
             wr_state <= WR_SEND_CMD;
           end if;
 
+        -- Send write command to the AXI master
         when WR_SEND_CMD =>
           if CmdWr_Ready = '1' then
             CmdWr_Addr   <= Wr_Addr;
-            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-            CmdWr_LowLat <= '1';
+            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));  -- 1 beat
+            CmdWr_LowLat <= '1'; -- low-latency write
             CmdWr_Valid  <= '1';
             wr_state     <= WR_WAIT_DONE;
           end if;
 
+        -- Wait for write to complete
         when WR_WAIT_DONE =>
-          CmdWr_Valid <= '0';
+          CmdWr_Valid <= '0';  -- One-shot signal
           if Wr_Done = '1' or Wr_Error = '1' then
             Wr_Counter <= Wr_Counter + 1;
             wr_state   <= WR_IDLE;
           end if;
 
+        -- Fallback (should not be hit)
         when others =>
           wr_state <= WR_IDLE;
       end case;
     end if;
   end if;
-end process;
+end process write_axi_m;
+
 
 
 
