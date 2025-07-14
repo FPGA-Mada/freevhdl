@@ -174,7 +174,7 @@ begin
           if CmdWr_Ready = '1' then
             CmdWr_Addr   <= Wr_Addr;
             CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-            CmdWr_LowLat <= '0';
+            CmdWr_LowLat <= '1';
             CmdWr_Valid  <= '1';
             wr_state     <= WR_WAIT_DONE;
           end if;
