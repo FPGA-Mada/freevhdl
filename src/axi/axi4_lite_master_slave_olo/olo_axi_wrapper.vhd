@@ -128,8 +128,8 @@ architecture rtl of olo_axi_wrapper is
     signal data_index       : integer range 0 to 9 := 0;
     signal write_done       : boolean := false;
     signal Wr_Addr          : std_logic_vector (CmdWr_Addr'range);
-   type t_wr_state is (WR_IDLE, WR_PREPARE, WR_WAIT_FIFO, WR_WAIT_READY, WR_SEND_CMD, WR_WAIT_DONE);
-   signal wr_state : t_wr_state := WR_IDLE;
+    type state_t is (IDLE, CONFIG_COM, SEND_TRANS);
+    signal state_axi_m : state_t := IDLE;
 
 
 begin
@@ -138,71 +138,63 @@ begin
    -----------------------------
    -- AXI MASTER write MASTER
    -----------------------------
-write_axi_m: process (Clk)
+
+
 begin
-  if rising_edge(Clk) then
-    if Rst = '1' then
-      Wr_Counter   <= 0;
-      Wr_Valid     <= '0';
-      CmdWr_Valid  <= '0';
-      Wr_Data      <= (others => '0');
-      Wr_Be        <= (others => '1');
-      CmdWr_LowLat <= '0';
-      wr_state     <= WR_IDLE;
-    else
-      case wr_state is
-        -- Wait for a new write operation
-        when WR_IDLE =>
-          if Wr_Counter < 10 then
-            Wr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
-            Wr_Data  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
-            wr_state <= WR_WAIT_FIFO;
-          end if;
 
-        -- Wait for FIFO to accept write data
-        when WR_WAIT_FIFO =>
-          if Wr_Ready = '1' then
-            Wr_Valid <= '1';
-            wr_state <= WR_WAIT_READY;
-          end if;
+  -----------------------------
+  -- AXI MASTER Write Process
+  -----------------------------
 
-        -- Wait until data is accepted (handshake)
-        when WR_WAIT_READY =>
-          if Wr_Valid = '1' and Wr_Ready = '1' then
-            Wr_Valid <= '0';  -- Deassert valid after handshake
-            wr_state <= WR_SEND_CMD;
-          end if;
+  write_trans : process(clk)
+  begin
+    if rising_edge(clk) then
+      if rst = '1' then
+        CmdWr_Valid  <= '0';
+        CmdWr_Addr   <= (others => '0');
+        CmdWr_Size   <= (others => '0');
+        CmdWr_LowLat <= '1';
+        Wr_Valid     <= '0';
 
-        -- Send write command to the AXI master
-        when WR_SEND_CMD =>
-          if CmdWr_Ready = '1' then
-            CmdWr_Addr   <= Wr_Addr;
-            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));  -- 1 beat
-            CmdWr_LowLat <= '1'; -- low-latency write
-            CmdWr_Valid  <= '1';
-            wr_state     <= WR_WAIT_DONE;
-          end if;
+        Wr_Data      <= (others => '0');
+        Wr_Be        <= (others => '1');
+        counter      <= 0;
+        state_axi_m  <= IDLE;
 
-        -- Wait for write to complete
-        when WR_WAIT_DONE =>
-          CmdWr_Valid <= '0';  -- One-shot signal
-          if Wr_Done = '1' or Wr_Error = '1' then
-            Wr_Counter <= Wr_Counter + 1;
-            wr_state   <= WR_IDLE;
-          end if;
+      else
+        -- Set constant signals every cycle
+        CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length)); -- 1 beat per write
+        CmdWr_LowLat <= '1';
+        Wr_Be        <= (others => '1');
 
-        -- Fallback (should not be hit)
-        when others =>
-          wr_state <= WR_IDLE;
-      end case;
+        case state_axi_m is
+          when IDLE =>
+            if Wr_Counter < 10 then
+              Wr_Data  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
+              Wr_Valid <= '1';
+
+              if Wr_Ready = '1' then
+                Wr_Valid    <= '0';
+                state_axi_m <= CONFIG_COM;
+              end if;
+            end if;
+
+          when CONFIG_COM =>
+            CmdWr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, CmdWr_Addr'length));
+            CmdWr_Valid <= '1';
+
+            if CmdWr_Ready = '1' then
+              CmdWr_Valid <= '0';
+              Wr_Counter     <= Wr_Counter + 1;
+              state_axi_m <= IDLE;
+            end if;
+
+          when others =>
+            state_axi_m <= IDLE;
+        end case;
+      end if;
     end if;
-  end if;
-end process write_axi_m;
-
-
-
-
-	
+  end process;
 -----------------------------
 -- AXI MASTER READ MASTER
 -----------------------------
