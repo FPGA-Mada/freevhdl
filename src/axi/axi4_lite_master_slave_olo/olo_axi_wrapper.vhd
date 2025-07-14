@@ -119,74 +119,68 @@ architecture rtl of olo_axi_wrapper is
     signal Rd_Addr_PL: std_logic_vector (AxiAddrWidth_g -1 downto 0):= (others => '0');
     signal Rd_Data_PL : std_logic_vector (AxiDataWidth_g -1 downto 0) := (others => '0');
     signal Rd_En_PL : std_logic := '0';
-    signal  Rd_Valid_PL : std_logic := '0';    
+    signal Rd_Valid_PL : std_logic := '0';    
     signal counter : integer range 0 to 40 := 0;
     signal read_counter : integer range 0 to 40 := 0;
 
 
     signal cmd_sent         : boolean := false; 
     signal data_index       : integer range 0 to 9 := 0;
-     signal write_done       : boolean := false;
+    signal write_done       : boolean := false;
+	 
+    type state_t is (IDLE, CONFIG_COM, SEND_TRANS);
+	signal state_axi_m : state_t := IDLE;
 begin
 
   
------------------------------
--- AXI MASTER write MASTER
------------------------------
--- WRITE COMMAND PROCESS
-write_cmd_proc : process(clk)
-begin
-  if rising_edge(clk) then
-    if rst = '1' then
-      CmdWr_Valid  <= '0';
-      CmdWr_Addr   <= (others => '0');
-      CmdWr_Size   <= (others => '0');
-      CmdWr_LowLat <= '0';
-      cmd_sent     <= false;
-    elsif not cmd_sent then
-      CmdWr_Addr   <= std_logic_vector(to_unsigned(0, CmdWr_Addr'length)); -- starting address
-      CmdWr_Size   <= std_logic_vector(to_unsigned(10, CmdWr_Size'length)); -- 10 beats
-      CmdWr_LowLat <= '0'; -- high latency
-      CmdWr_Valid  <= '1';
-
-      if CmdWr_Ready = '1' then
-        CmdWr_Valid <= '0';
-        cmd_sent    <= true;
-      end if;
-    end if;
-  end if;
-end process write_cmd_proc;
-
--- WRITE DATA PROCESS
-write_data_proc : process(clk)
-begin
-  if rising_edge(clk) then
-    if rst = '1' then
-      Wr_Valid    <= '0';
-      Wr_Data     <= (others => '0');
-      Wr_Be       <= (others => '1');
-      data_index  <= 0;
-      write_done  <= false;
-    elsif cmd_sent and not write_done then
-      Wr_Valid <= '1'; -- Keep valid high until all data sent
-
-      if Wr_Ready = '1' then
-        Wr_Data <= std_logic_vector(to_unsigned(data_index * 4, Wr_Data'length)); 
-        Wr_Be   <= (others => '1');
-
-        if data_index = 9 then
-          write_done <= true;
-          Wr_Valid   <= '0'; -- last data beat
-        else
-          data_index <= data_index + 1;
-        end if;
-      end if;
-    else
-      Wr_Valid <= '0';
-    end if;
-  end if;
-end process write_data_proc;
-
+   -----------------------------
+   -- AXI MASTER write MASTER
+   -----------------------------
+   
+   write_trans : process(clk)
+   begin
+     if rising_edge(clk) then
+       if rst = '1' then
+         CmdWr_Valid  <= '0';
+         CmdWr_Addr   <= (others => '0');
+         CmdWr_Size   <= (others => '0');
+         CmdWr_LowLat <= '1';
+         Wr_Valid     <= '0';
+         Wr_Data      <= (others => '0');
+         Wr_Be        <= (others => '1');
+         counter      <= 0;
+         state_axi_m  <= IDLE;
+       else
+         CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length)); -- 1 beat per write
+         CmdWr_LowLat <= '1';
+         Wr_Be        <= (others => '1');
+   
+         case state_axi_m is
+           when IDLE =>
+             if counter < 10 then
+               CmdWr_Valid <= '1';
+               CmdWr_Addr  <= std_logic_vector(to_unsigned(counter * 4, CmdWr_Addr'length));
+               if CmdWr_Ready = '1' then
+                 CmdWr_Valid <= '0';
+                 state_axi_m <= CONFIG_COM;
+               end if;
+             end if;
+   
+           when CONFIG_COM =>
+             Wr_Valid <= '1';
+             Wr_Data  <= std_logic_vector(to_unsigned(counter * 4, Wr_Data'length));
+             if Wr_Ready = '1' then
+               Wr_Valid <= '0';
+               counter <= counter + 1;
+               state_axi_m <= IDLE;
+             end if;
+   
+           when others =>
+             state_axi_m <= IDLE;
+         end case;
+       end if;
+     end if;
+   end process;
 
 	
 -----------------------------
