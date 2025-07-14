@@ -158,26 +158,27 @@ begin
          case state_axi_m is
            when IDLE =>
              if counter < 10 then
-               CmdWr_Valid <= '1';
-               CmdWr_Addr  <= std_logic_vector(to_unsigned(counter * 4, CmdWr_Addr'length));
-               if CmdWr_Ready = '1' then
-                 CmdWr_Valid <= '0';
+               Wr_Data  <= std_logic_vector(to_unsigned(counter * 4, Wr_Data'length));
+               Wr_Valid <= '1';
+               if Wr_Ready = '1' then
+                 Wr_Valid <= '0';
                  state_axi_m <= CONFIG_COM;
                end if;
              end if;
-   
+         
            when CONFIG_COM =>
-             Wr_Valid <= '1';
-             Wr_Data  <= std_logic_vector(to_unsigned(counter * 4, Wr_Data'length));
-             if Wr_Ready = '1' then
-               Wr_Valid <= '0';
-               counter <= counter + 1;
+             CmdWr_Addr   <= std_logic_vector(to_unsigned(counter * 4, CmdWr_Addr'length));
+             CmdWr_Valid  <= '1';
+             if CmdWr_Ready = '1' then
+               CmdWr_Valid <= '0';
+               counter     <= counter + 1;
                state_axi_m <= IDLE;
              end if;
-   
+         
            when others =>
              state_axi_m <= IDLE;
          end case;
+
        end if;
      end if;
    end process;
