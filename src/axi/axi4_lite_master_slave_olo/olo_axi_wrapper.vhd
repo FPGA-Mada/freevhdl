@@ -125,68 +125,71 @@ architecture rtl of olo_axi_wrapper is
 begin
 
   
-	 -----------------------------
-    -- AXI MASTER write MASTER
-    -----------------------------
-	write_proc: process (clk) 
-	  begin 
-		if rising_edge (clk) then 
-			if rst = '1' then
-				CmdWr_Addr   <= (others => '0');
-				CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-				CmdWr_LowLat <= '1';
-				CmdWr_Valid  <= '0';
-				Wr_Data    	 <= (others => '0');
-				Wr_Be        <= (others => '0');
-				Wr_Valid     <=  '0';
-				counter <= 0;
-			else
-			    CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-				CmdWr_LowLat <= '1';
-				CmdWr_Addr <= (others => '0');
-				CmdWr_Valid  <= '0';
-				Wr_Be        <= (others => '1');
-				Wr_Data    	 <= (others => '0');
-				Wr_Valid     <=  '0';			
-				if (counter < 4 * 10 and Wr_Ready = '1' ) then 	
-					CmdWr_Addr   <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
-					CmdWr_Valid  <= '1';
-					Wr_Data      <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
-					Wr_Valid     <=  '1';
-					counter <= counter + 4;
-				end if;
-			end if;        
-		end if;
-	  end process write_proc;
+-----------------------------
+-- AXI MASTER write MASTER
+-----------------------------
+write_proc : process(clk)
+begin
+    if rising_edge(clk) then
+        if rst = '1' then
+            CmdWr_Addr   <= (others => '0');
+            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
+            CmdWr_LowLat <= '1'; -- low latency
+            CmdWr_Valid  <= '0';
+            Wr_Data      <= (others => '0');
+            Wr_Be        <= (others => '1');
+            Wr_Valid     <= '0';
+            counter      <= 0;
+        else
+            CmdWr_Valid <= '0';
+            Wr_Valid    <= '0';
+
+            if CmdWr_Ready = '1' and Wr_Ready = '1' and counter < 40 then
+                CmdWr_Addr   <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
+                CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));  -- one beat
+                CmdWr_LowLat <= '1';
+                CmdWr_Valid  <= '1';
+
+                Wr_Data      <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
+                Wr_Be        <= (others => '1');
+                Wr_Valid     <= '1';
+
+                counter <= counter + 4;
+            end if;
+        end if;
+    end if;
+end process;
+
 	
-	-----------------------------
-    -- AXI MASTER READ MASTER
-    -----------------------------
-   read_proc: process(clk)
-   begin
-       if rising_edge(clk) then
-           if rst = '1' then
-               CmdRd_Addr   <= (others => '0');
-               CmdRd_Size   <= std_logic_vector(to_unsigned(1, CmdRd_Size'length));
-               CmdRd_LowLat <= '1';
-               CmdRd_Valid  <= '0';
-               Rd_Ready     <= '1';
-               read_counter <= 0;
-           else
-               -- Default de-assertions
-               CmdRd_Valid <= '0';   
-			   Rd_Ready     <= '1';
-               -- Issue a read command if AXI master is ready
-               if (CmdRd_Ready = '1') and (read_counter < 4 * 10) then
-                   CmdRd_Addr   <= std_logic_vector(to_unsigned(read_counter, CmdRd_Addr'length));
-                   CmdRd_Size   <= std_logic_vector(to_unsigned(1, CmdRd_Size'length));  -- 1 beat
-                   CmdRd_LowLat <= '1';  -- or '0' if you prefer High Latency mode
-                   CmdRd_Valid  <= '1';
-                   read_counter <= read_counter + 4;
-               end if;
-           end if;
-       end if;
-   end process read_proc;
+-----------------------------
+-- AXI MASTER READ MASTER
+-----------------------------
+read_proc: process(clk)
+begin
+    if rising_edge(clk) then
+        if rst = '1' then
+            CmdRd_Addr   <= (others => '0');
+            CmdRd_Size   <= std_logic_vector(to_unsigned(1, CmdRd_Size'length));
+            CmdRd_LowLat <= '1';
+            CmdRd_Valid  <= '0';
+            Rd_Ready     <= '1';
+            read_counter <= 0;
+        else
+            CmdRd_Valid <= '0'; -- default deassert
+            Rd_Ready    <= '1'; -- always ready to consume data
+
+            if CmdRd_Ready = '1' and read_counter < 40 then
+                CmdRd_Addr   <= std_logic_vector(to_unsigned(read_counter, CmdRd_Addr'length));
+                CmdRd_Size   <= std_logic_vector(to_unsigned(1, CmdRd_Size'length));  -- 1 beat
+                CmdRd_LowLat <= '1';  -- fast mode
+                CmdRd_Valid  <= '1';
+
+                read_counter <= read_counter + 4;
+            end if;
+        end if;
+    end if;
+end process;
+
 
 
     -----------------------------
