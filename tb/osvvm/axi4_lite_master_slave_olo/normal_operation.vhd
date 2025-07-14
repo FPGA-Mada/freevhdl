@@ -70,6 +70,35 @@ begin
     wait;
   end process ManagerProc;
 
+   ------------------------------------------------------------
+     -- Axi Subordinate
+   ------------------------------------------------------------
+   SubordinateProc : process
+   variable Addr        : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
+   variable RData       : std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+   variable Addr_w        : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
+   variable RData_w       : std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+   begin
+   -- Wait for Reset deassertion
+   wait until nReset = '1';
+   WaitForClock(SubordinateRec, 2);  -- Wait for a couple of clocks
+   
+   -- Loop through 32 addresses (assuming 4-byte aligned)
+   for i in 0 to 9 loop
+  	 Addr := std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH));
+  	 RData := std_logic_vector(to_unsigned(1, AXI_DATA_WIDTH));  
+  	 -- Send read response to the DUT
+  	 SendRead(SubordinateRec, Addr, RData);
+	 GetWrite(SubordinateRec, Addr_w, RData_w) ;
+         AffirmIfEqual(Addr_w,  std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH)), "Subordinate Write Addr: ") ;
+         AffirmIfEqual(RData_w,  std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH)), "Subordinate Write Data: ") ;
+  	 -- Optional: delay between responses
+  	 wait for 10 ns;
+   end loop;
+   
+   wait;  -- Process ends
+   end process SubordinateProc;
+
  
     
    end BasicReadWrite;
