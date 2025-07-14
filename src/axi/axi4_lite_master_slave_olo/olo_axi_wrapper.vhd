@@ -149,7 +149,7 @@ begin
 				Wr_Data    	 <= (others => '0');
 				Wr_Valid     <=  '0';			
 				if (counter < 4 * 10 and Wr_Ready = '1' ) then 	
-					CmdWr_Addr   <= std_logic_vector(to_unsigned(counter, CmdWr_Size'length));
+					CmdWr_Addr   <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
 					CmdWr_Valid  <= '1';
 					Wr_Data      <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
 					Wr_Valid     <=  '1';
