@@ -87,7 +87,7 @@ begin
 	 Addr := std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH));
   	 RData := std_logic_vector(to_unsigned(1, AXI_DATA_WIDTH));  
   	 -- Send read response to the DUT
-  	 - - SendRead(SubordinateRec, Addr, RData);
+  	 -- SendRead(SubordinateRec, Addr, RData);
 	 GetWrite(SubordinateRec, Addr_w, RData_w) ;
          Log("Write Addr Sent: " & to_hstring(Addr_w));
          Log("Write data Sent: " & to_hstring(RData_w));
