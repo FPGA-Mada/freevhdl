@@ -151,7 +151,7 @@ begin
 
         Wr_Data      <= (others => '0');
         Wr_Be        <= (others => '1');
-        counter      <= 0;
+        Wr_Counter      <= 0;
         state_axi_m  <= IDLE;
 
       else
