@@ -144,7 +144,7 @@ begin
       CmdWr_LowLat <= '0';
       cmd_sent     <= false;
     elsif not cmd_sent then
-      CmdWr_Addr   <= x"00000000"; -- starting address
+      CmdWr_Addr   <= std_logic_vector(to_unsigned(0, CmdWr_Addr'length)); -- starting address
       CmdWr_Size   <= std_logic_vector(to_unsigned(10, CmdWr_Size'length)); -- 10 beats
       CmdWr_LowLat <= '0'; -- high latency
       CmdWr_Valid  <= '1';
