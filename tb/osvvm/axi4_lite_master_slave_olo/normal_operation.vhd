@@ -91,7 +91,7 @@ begin
   	 SendRead(SubordinateRec, Addr, RData);
 	 GetWrite(SubordinateRec, Addr_w, RData_w) ;
          AffirmIfEqual(Addr_w,  std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH)), "Subordinate Write Addr: ") ;
-         AffirmIfEqual(RData_w,  std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH)), "Subordinate Write Data: ") ;
+         AffirmIfEqual(RData_w,  std_logic_vector(to_unsigned(i * 4, AXI_DATA_WIDTH)), "Subordinate Write Data: ") ;
   	 -- Optional: delay between responses
   	 wait for 10 ns;
    end loop;
