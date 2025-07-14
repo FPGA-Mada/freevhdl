@@ -128,37 +128,37 @@ begin
 -----------------------------
 -- AXI MASTER write MASTER
 -----------------------------
-write_proc : process(clk)
+write_proc: process (clk)
 begin
     if rising_edge(clk) then
         if rst = '1' then
             CmdWr_Addr   <= (others => '0');
             CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-            CmdWr_LowLat <= '1'; -- low latency
+            CmdWr_LowLat <= '1';
             CmdWr_Valid  <= '0';
             Wr_Data      <= (others => '0');
-            Wr_Be        <= (others => '1');
+            Wr_Be        <= (others => '0');
             Wr_Valid     <= '0';
             counter      <= 0;
         else
-            CmdWr_Valid <= '0';
-            Wr_Valid    <= '0';
-
-            if CmdWr_Ready = '1' and Wr_Ready = '1' and counter < 40 then
-                CmdWr_Addr   <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
-                CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));  -- one beat
-                CmdWr_LowLat <= '1';
-                CmdWr_Valid  <= '1';
-
-                Wr_Data      <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
-                Wr_Be        <= (others => '1');
-                Wr_Valid     <= '1';
-
-                counter <= counter + 4;
+            -- Defaults only for unrelated signals
+            CmdWr_Valid  <= '0';
+            Wr_Valid     <= '0';
+            CmdWr_LowLat <= '1';
+            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
+            Wr_Be        <= (others => '1');
+            -- No CmdWr_Addr default assignment here!
+            if (counter < 4 * 10) and (CmdWr_Ready = '1') and (Wr_Ready = '1') then
+                CmdWr_Addr  <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
+                CmdWr_Valid <= '1';
+                Wr_Data     <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
+                Wr_Valid    <= '1';
+                counter     <= counter + 4;
             end if;
         end if;
     end if;
-end process;
+end process write_proc;
+
 
 	
 -----------------------------
