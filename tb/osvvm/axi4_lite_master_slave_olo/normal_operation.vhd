@@ -76,13 +76,18 @@ begin
    SubordinateProc : process
    variable Addr_w        : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
    variable RData_w       : std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+   variable Addr        : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
+   variable RData       : std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
    begin
    -- Wait for Reset deassertion
    wait until nReset = '1';
-   WaitForClock(SubordinateRec, 2);  -- Wait for a couple of clocks
-   
+   WaitForClock(SubordinateRec, 2);  -- Wait for a couple of clocks 
    -- Loop through 32 addresses (assuming 4-byte aligned)
    for i in 0 to 9 loop
+	 Addr := std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH));
+  	 RData := std_logic_vector(to_unsigned(1, AXI_DATA_WIDTH));  
+  	 -- Send read response to the DUT
+  	 SendRead(SubordinateRec, Addr, RData);
 	 GetWrite(SubordinateRec, Addr_w, RData_w) ;
          Log("Write Addr Sent: " & to_hstring(Addr_w));
          Log("Write data Sent: " & to_hstring(RData_w));
@@ -94,32 +99,6 @@ begin
    
    wait;  -- Process ends
    end process SubordinateProc;
-
-   ------------------------------------------------------------
-     -- Axi Subordinate read data
-   ------------------------------------------------------------
-   SubordinateProc_read : process
-   variable Addr        : std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
-   variable RData       : std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
-   begin
-   -- Wait for Reset deassertion
-   wait until nReset = '1';
-   WaitForClock(SubordinateRec, 2);  -- Wait for a couple of clocks
-   
-   -- Loop through 32 addresses (assuming 4-byte aligned)
-   for i in 0 to 9 loop
-  	 Addr := std_logic_vector(to_unsigned(i * 4, AXI_ADDR_WIDTH));
-  	 RData := std_logic_vector(to_unsigned(1, AXI_DATA_WIDTH));  
-  	 -- Send read response to the DUT
-  	 SendRead(SubordinateRec, Addr, RData);
-  	 wait for 50 ns;
-   end loop;
-   
-   wait;  -- Process ends
-   end process SubordinateProc_read;
-
- 
-    
    end BasicReadWrite;
 
 Configuration normal_operation of TbAxi4 is
