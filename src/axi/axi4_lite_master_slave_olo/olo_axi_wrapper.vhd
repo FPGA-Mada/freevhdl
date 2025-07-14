@@ -135,13 +135,6 @@ architecture rtl of olo_axi_wrapper is
 begin
 
   
-   -----------------------------
-   -- AXI MASTER write MASTER
-   -----------------------------
-
-
-begin
-
   -----------------------------
   -- AXI MASTER Write Process
   -----------------------------
