@@ -127,9 +127,10 @@ architecture rtl of olo_axi_wrapper is
     signal cmd_sent         : boolean := false; 
     signal data_index       : integer range 0 to 9 := 0;
     signal write_done       : boolean := false;
-	signal Wr_Addr          : std_logic_vector (CmdWr_Addr'range);
-	type t_wr_state is (WR_IDLE, WR_WAIT_FIFO, WR_SEND_CMD, WR_WAIT_DONE);
-	signal wr_state : t_wr_state := WR_IDLE;
+    signal Wr_Addr          : std_logic_vector (CmdWr_Addr'range);
+   type t_wr_state is (WR_IDLE, WR_PREPARE, WR_WAIT_FIFO, WR_WAIT_READY, WR_SEND_CMD, WR_WAIT_DONE);
+   signal wr_state : t_wr_state := WR_IDLE;
+
 
 begin
 
@@ -137,58 +138,61 @@ begin
    -----------------------------
    -- AXI MASTER write MASTER
    -----------------------------
-      
-    process (Clk)
-   begin
-     if rising_edge(Clk) then
-       if Rst = '1' then
-         Wr_Counter   <= 0;
-         Wr_Valid     <= '0';
-         CmdWr_Valid  <= '0';
-         Wr_Data      <= (others => '0');
-         Wr_Be        <= (others => '1');
-         CmdWr_LowLat <= '0';
-         wr_state     <= WR_IDLE;
-       else
-         case wr_state is
-           when WR_IDLE =>
-             if Wr_Counter < 10 then
-               Wr_Data    <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
-               Wr_Addr    <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
-               Wr_Counter <= Wr_Counter + 1;
-               wr_state   <= WR_WAIT_FIFO;
-             end if;
-   
-           when WR_WAIT_FIFO =>
-             if Wr_Ready = '1' then
-               Wr_Valid <= '1';
-               wr_state <= WR_SEND_CMD;
-             end if;
-   
-           when WR_SEND_CMD =>
-             if CmdWr_Ready = '1' then
-               CmdWr_Addr   <= Wr_Addr;
-               CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
-               CmdWr_Valid  <= '1';
-               CmdWr_LowLat <= '0';
-               Wr_Valid     <= '0'; -- only one beat
-               wr_state     <= WR_WAIT_DONE;
-             else
-               CmdWr_Valid <= '0';
-             end if;
-   
-           when WR_WAIT_DONE =>
-             CmdWr_Valid <= '0';
-             if Wr_Done = '1' or Wr_Error = '1' then
-               wr_state <= WR_IDLE;
-             end if;
-   
-           when others =>
-             wr_state <= WR_IDLE;
-         end case;
-       end if;
-     end if;
-   end process;
+ process (Clk)
+begin
+  if rising_edge(Clk) then
+    if Rst = '1' then
+      Wr_Counter   <= 0;
+      Wr_Valid     <= '0';
+      CmdWr_Valid  <= '0';
+      Wr_Data      <= (others => '0');
+      Wr_Be        <= (others => '1');
+      CmdWr_LowLat <= '0';
+      wr_state     <= WR_IDLE;
+    else
+      case wr_state is
+        when WR_IDLE =>
+          if Wr_Counter < 10 then
+            Wr_Addr  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
+            Wr_Data  <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
+            wr_state <= WR_WAIT_FIFO;
+          end if;
+
+        when WR_WAIT_FIFO =>
+          if Wr_Ready = '1' then
+            Wr_Valid <= '1';
+            wr_state <= WR_WAIT_READY;
+          end if;
+
+        when WR_WAIT_READY =>
+          if Wr_Valid = '1' and Wr_Ready = '1' then
+            Wr_Valid <= '0';  -- Deassert after handshake
+            wr_state <= WR_SEND_CMD;
+          end if;
+
+        when WR_SEND_CMD =>
+          if CmdWr_Ready = '1' then
+            CmdWr_Addr   <= Wr_Addr;
+            CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
+            CmdWr_LowLat <= '0';
+            CmdWr_Valid  <= '1';
+            wr_state     <= WR_WAIT_DONE;
+          end if;
+
+        when WR_WAIT_DONE =>
+          CmdWr_Valid <= '0';
+          if Wr_Done = '1' or Wr_Error = '1' then
+            Wr_Counter <= Wr_Counter + 1;
+            wr_state   <= WR_IDLE;
+          end if;
+
+        when others =>
+          wr_state <= WR_IDLE;
+      end case;
+    end if;
+  end if;
+end process;
+
 
 
 	
