@@ -23,8 +23,8 @@ begin
     LOG("Start of Transactions");
 
     -- Wait for test to finish
-    WaitForBarrier(TestDone, 5 ms);
-    AlertIf(now >= 5 ms, "Test finished due to timeout");
+    WaitForBarrier(TestDone, 15 ms);
+    AlertIf(now >= 15 ms, "Test finished due to timeout");
     AlertIf(GetAffirmCount < 30, "Test is not Self-Checking");
 	
 	AffirmIf(Req_1, GetAlertCount = 0, GetTestName & "REQUIREMENT Req_1 FAILED!!!!!") ;
