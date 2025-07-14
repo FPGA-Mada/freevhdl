@@ -148,7 +148,7 @@ begin
             CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
             Wr_Be        <= (others => '1');
             -- No CmdWr_Addr default assignment here!
-            if (counter < 4 * 10) and (CmdWr_Ready = '1') and (Wr_Ready = '1') then
+            if (counter < 4 * 10) and (CmdWr_Ready = '1') then
                 CmdWr_Addr  <= std_logic_vector(to_unsigned(counter, CmdWr_Addr'length));
                 CmdWr_Valid <= '1';
                 Wr_Data     <= std_logic_vector(to_unsigned(counter, Wr_Data'length));
