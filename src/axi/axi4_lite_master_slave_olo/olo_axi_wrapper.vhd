@@ -153,7 +153,7 @@ begin
          case wr_state is
            when WR_IDLE =>
              if Wr_Counter < 10 then
-               Wr_Data    <= std_logic_vector(to_unsigned(Wr_Counter, Wr_Data'length));
+               Wr_Data    <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Data'length));
                Wr_Addr    <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
                Wr_Counter <= Wr_Counter + 1;
                wr_state   <= WR_WAIT_FIFO;
