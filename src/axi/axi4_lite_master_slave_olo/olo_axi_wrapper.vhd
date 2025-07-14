@@ -120,68 +120,76 @@ architecture rtl of olo_axi_wrapper is
     signal Rd_Data_PL : std_logic_vector (AxiDataWidth_g -1 downto 0) := (others => '0');
     signal Rd_En_PL : std_logic := '0';
     signal Rd_Valid_PL : std_logic := '0';    
-    signal counter : integer range 0 to 40 := 0;
+    signal Wr_Counter : integer range 0 to 40 := 0;
     signal read_counter : integer range 0 to 40 := 0;
 
 
     signal cmd_sent         : boolean := false; 
     signal data_index       : integer range 0 to 9 := 0;
     signal write_done       : boolean := false;
-	 
-    type state_t is (IDLE, CONFIG_COM, SEND_TRANS);
-	signal state_axi_m : state_t := IDLE;
+	signal Wr_Addr          : std_logic_vector (CmdWr_Addr'range);
+	type t_wr_state is (WR_IDLE, WR_WAIT_FIFO, WR_SEND_CMD, WR_WAIT_DONE);
+	signal wr_state : t_wr_state := WR_IDLE;
+
 begin
 
   
    -----------------------------
    -- AXI MASTER write MASTER
    -----------------------------
-   
-   write_trans : process(clk)
+      
+    process (Clk)
    begin
-     if rising_edge(clk) then
-       if rst = '1' then
-         CmdWr_Valid  <= '0';
-         CmdWr_Addr   <= (others => '0');
-         CmdWr_Size   <= (others => '0');
-         CmdWr_LowLat <= '1';
+     if rising_edge(Clk) then
+       if Rst = '1' then
+         Wr_Counter   <= 0;
          Wr_Valid     <= '0';
+         CmdWr_Valid  <= '0';
          Wr_Data      <= (others => '0');
          Wr_Be        <= (others => '1');
-         counter      <= 0;
-         state_axi_m  <= IDLE;
+         CmdWr_LowLat <= '0';
+         wr_state     <= WR_IDLE;
        else
-         CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length)); -- 1 beat per write
-         CmdWr_LowLat <= '1';
-         Wr_Be        <= (others => '1');
+         case wr_state is
+           when WR_IDLE =>
+             if Wr_Counter < 10 then
+               Wr_Data    <= std_logic_vector(to_unsigned(Wr_Counter, Wr_Data'length));
+               Wr_Addr    <= std_logic_vector(to_unsigned(Wr_Counter * 4, Wr_Addr'length));
+               Wr_Counter <= Wr_Counter + 1;
+               wr_state   <= WR_WAIT_FIFO;
+             end if;
    
-         case state_axi_m is
-           when IDLE =>
-             if counter < 10 then
-               Wr_Data  <= std_logic_vector(to_unsigned(counter * 4, Wr_Data'length));
+           when WR_WAIT_FIFO =>
+             if Wr_Ready = '1' then
                Wr_Valid <= '1';
-               if Wr_Ready = '1' then
-                 Wr_Valid <= '0';
-                 state_axi_m <= CONFIG_COM;
-               end if;
+               wr_state <= WR_SEND_CMD;
              end if;
-         
-           when CONFIG_COM =>
-             CmdWr_Addr   <= std_logic_vector(to_unsigned(counter * 4, CmdWr_Addr'length));
-             CmdWr_Valid  <= '1';
+   
+           when WR_SEND_CMD =>
              if CmdWr_Ready = '1' then
+               CmdWr_Addr   <= Wr_Addr;
+               CmdWr_Size   <= std_logic_vector(to_unsigned(1, CmdWr_Size'length));
+               CmdWr_Valid  <= '1';
+               CmdWr_LowLat <= '0';
+               Wr_Valid     <= '0'; -- only one beat
+               wr_state     <= WR_WAIT_DONE;
+             else
                CmdWr_Valid <= '0';
-               counter     <= counter + 1;
-               state_axi_m <= IDLE;
              end if;
-         
+   
+           when WR_WAIT_DONE =>
+             CmdWr_Valid <= '0';
+             if Wr_Done = '1' or Wr_Error = '1' then
+               wr_state <= WR_IDLE;
+             end if;
+   
            when others =>
-             state_axi_m <= IDLE;
+             wr_state <= WR_IDLE;
          end case;
-
        end if;
      end if;
    end process;
+
 
 	
 -----------------------------
