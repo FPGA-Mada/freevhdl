@@ -120,8 +120,8 @@ architecture rtl of olo_axi_wrapper is
     signal Rd_Data_PL : std_logic_vector (AxiDataWidth_g -1 downto 0) := (others => '0');
     signal Rd_En_PL : std_logic := '0';
     signal  Rd_Valid_PL : std_logic := '0';    
-	signal counter : integer range 0 to 39 := 0;
-    signal read_counter : integer range 0 to 39 := 0;
+    signal counter : integer range 0 to 40 := 0;
+    signal read_counter : integer range 0 to 40 := 0;
 begin
 
   
