@@ -1,14 +1,14 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
-use work.math_utils.all;  -- Assumes clog2 function is defined here
+use work.math_utils.all;
 
 entity axi_stream_fifo is
     generic (
         FIFO_DEPTH : integer := 32;
         DATA_WIDTH : integer := 32
     );
-    Port (
+    port (
         clk     : in  std_logic;
         rst     : in  std_logic;
 
@@ -26,26 +26,23 @@ end axi_stream_fifo;
 
 architecture Behavioral of axi_stream_fifo is
 
-    -- FIFO memory type and signal
+    -- FIFO memory (only data, no last)
     type fifo_type is array (0 to FIFO_DEPTH - 1) of std_logic_vector(DATA_WIDTH - 1 downto 0);
     signal fifo_mem : fifo_type := (others => (others => '0'));
 
-    -- FIFO status flags
+    -- Status flags
     signal fifo_full  : std_logic := '0';
     signal fifo_empty : std_logic := '1';
 
-    -- Write and read pointers
+    -- Pointers and counters
     signal wr_indx : unsigned(clog2(FIFO_DEPTH) - 1 downto 0) := (others => '0');
     signal rd_indx : unsigned(clog2(FIFO_DEPTH) - 1 downto 0) := (others => '0');
+    signal count   : unsigned(clog2(FIFO_DEPTH) downto 0)     := (others => '0');
 
-    -- Element count in FIFO
-    signal count : unsigned(clog2(FIFO_DEPTH) downto 0) := (others => '0');
+    -- Output register
+    signal m_data_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
 
-    -- Output registers
-    signal m_valid_reg : std_logic := '0';
-    signal m_data_reg  : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-
-    -- Control signals
+    -- Control
     signal do_write : std_logic;
     signal do_read  : std_logic;
     signal rw_state : std_logic_vector(1 downto 0);
@@ -55,15 +52,15 @@ begin
     -- FIFO status
     fifo_full  <= '1' when (to_integer(count) = FIFO_DEPTH) else '0';
     fifo_empty <= '1' when (to_integer(count) = 0)          else '0';
-	
+
+    -- Handshake logic
     s_ready <= not fifo_full;
-    -- Control logic
     do_write <= '1' when (s_valid = '1' and s_ready = '1') else '0';
-    do_read  <= '1' when (m_ready = '1' and fifo_empty = '0') else '0';
+    do_read  <= '1' when (m_valid = '1' and m_ready = '1') else '0';
     rw_state <= do_write & do_read;
 
-    -- Handshake outputs
-    m_valid <= m_valid_reg;
+    -- Output signals
+    m_valid <= not fifo_empty;
     m_data  <= m_data_reg;
 
     -- Main FIFO process
@@ -71,34 +68,25 @@ begin
     begin
         if rising_edge(clk) then
             if rst = '1' then
-                count       <= (others => '0');
-                wr_indx     <= (others => '0');
-                rd_indx     <= (others => '0');
-                m_valid_reg <= '0';
-                m_data_reg  <= (others => '0');
-                fifo_mem    <= (others => (others => '0'));
-
+                count      <= (others => '0');
+                wr_indx    <= (others => '0');
+                rd_indx    <= (others => '0');
+                m_data_reg <= (others => '0');
+                fifo_mem   <= (others => (others => '0'));
             else
-               -- Default: clear output valid
-               -- Clear valid if current output accepted by downstream
-                if m_valid_reg = '1' and m_ready = '1' then
-                    m_valid_reg <= '0';
-                end if; 
-
-                -- Write
+                -- Write operation
                 if do_write = '1' then
                     fifo_mem(to_integer(wr_indx)) <= s_data;
                     wr_indx <= to_unsigned((to_integer(wr_indx) + 1) mod FIFO_DEPTH, wr_indx'length);
                 end if;
 
-                -- Read
+                -- Read operation
                 if do_read = '1' then
-                    m_data_reg  <= fifo_mem(to_integer(rd_indx));
-                    m_valid_reg <= '1';
+                    m_data_reg <= fifo_mem(to_integer(rd_indx));
                     rd_indx <= to_unsigned((to_integer(rd_indx) + 1) mod FIFO_DEPTH, rd_indx'length);
                 end if;
 
-                -- Update count
+                -- Update FIFO count
                 case rw_state is
                     when "10" => count <= count + 1;  -- Write only
                     when "01" => count <= count - 1;  -- Read only
