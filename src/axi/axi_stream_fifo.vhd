@@ -39,14 +39,10 @@ architecture Behavioral of axi_stream_fifo is
     signal rd_indx : unsigned(clog2(FIFO_DEPTH) - 1 downto 0) := (others => '0');
     signal count   : unsigned(clog2(FIFO_DEPTH) downto 0)     := (others => '0');
 
-    -- Output register
-    signal m_data_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-
     -- Control
     signal do_write : std_logic;
     signal do_read  : std_logic;
     signal rw_state : std_logic_vector(1 downto 0);
-
 begin
 
     -- FIFO status
@@ -61,7 +57,7 @@ begin
 
     -- Output signals
     m_valid <= not fifo_empty;
-    m_data  <= m_data_reg;
+    m_data  <=  fifo_mem(to_integer(rd_indx));
 
     -- Main FIFO process
     fifo_proc : process(clk)
@@ -71,7 +67,6 @@ begin
                 count      <= (others => '0');
                 wr_indx    <= (others => '0');
                 rd_indx    <= (others => '0');
-                m_data_reg <= (others => '0');
                 fifo_mem   <= (others => (others => '0'));
             else
                 -- Write operation
@@ -82,7 +77,6 @@ begin
 
                 -- Read operation
                 if do_read = '1' then
-                    m_data_reg <= fifo_mem(to_integer(rd_indx));
                     rd_indx <= to_unsigned((to_integer(rd_indx) + 1) mod FIFO_DEPTH, rd_indx'length);
                 end if;
 
