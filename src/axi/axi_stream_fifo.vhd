@@ -84,6 +84,7 @@ begin
                 case rw_state is
                     when "10" => count <= count + 1;  -- Write only
                     when "01" => count <= count - 1;  -- Read only
+                    when "11" => count <= count; -- Write/Read at the same time
                     when others => null;              -- Both or neither
                 end case;
             end if;
