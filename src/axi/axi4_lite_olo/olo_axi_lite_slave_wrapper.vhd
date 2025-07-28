@@ -56,9 +56,10 @@ architecture rtl of olo_axi_lite_slave_wrapper is
     signal Rb_RdValid : std_logic;
 
     -- Memory
-    constant MemDepth_c : integer := pow2(AxiAddrWidth_g);
-    type mem_type is array (0 to MemDepth_c - 1) of std_logic_vector(AxiDataWidth_g - 1 downto 0);
-    signal mem : mem_type := (others => (others => '0'));
+    constant MemDepth_c : integer := pow2(AxiAddrWidth_g-2);
+	signal Rb_Rd_d1 : std_logic := '0';
+
+
 
 begin
 
@@ -97,37 +98,43 @@ begin
             Rb_RdData         => Rb_RdData,
             Rb_RdValid        => Rb_RdValid
         );
+		
+        -- RAM Instantiations 
+        ram_inst: entity work.olo_base_ram_sdp
+        generic map (
+            Depth_g         => MemDepth_c,
+            Width_g         => AxiDataWidth_g,
+            IsAsync_g       => false,
+            RdLatency_g     => 1,
+            RamStyle_g      => "auto",
+            RamBehavior_g   => "RBW",
+            UseByteEnable_g => false,
+            InitString_g    => "",
+            InitFormat_g    => "NONE"
+        )
+        port map (
+            Clk         => clk,
+            Wr_Addr     => Rb_Addr (Rb_Addr'high downto 2),
+            Wr_Ena      => Rb_Wr,
+            Wr_Be       => Rb_ByteEna,
+            Wr_Data     => Rb_WrData,
+            Rd_Clk      => clk,
+            Rd_Addr     =>  Rb_Addr (Rb_Addr'high downto 2),
+            Rd_Ena      =>  Rb_Rd,
+            Rd_Data     => Rb_RdData
+        );
 
-    -- Simple memory-mapped register handling
-    write_mem : process (Clk)
-        variable addr_v : integer;
-    begin
-        if rising_edge(Clk) then
-            addr_v := to_integer(unsigned(Rb_Addr(Rb_Addr'high downto 2)));
-
-            -- Write operation
-            if Rb_Wr = '1' then
-                -- Optional check: 
-                -- addr_v will always be within 0..MemDepth_c-1 due to address width,
-                -- but check kept for safety and future-proofing
-                if addr_v < MemDepth_c then
-                    mem(addr_v) <= Rb_WrData;
-                end if;
-            end if;
-
-            -- Read operation
-            if Rb_Rd = '1' then
-                if addr_v < MemDepth_c then
-                    Rb_RdData <= mem(addr_v);
-                    Rb_RdValid <= '1';
-                else
-                    Rb_RdData <= (others => '0');
-                    Rb_RdValid <= '0';
-                end if;
-            else
-                Rb_RdValid <= '0';
-            end if;
-        end if;
-    end process;
-
+	valid_proc : process (clk) 
+	  begin
+		if rising_edge (clk) then 
+			if rst = '1' then
+				Rb_Rd_d1 <= '0';
+				Rb_RdValid <= '0';
+			else 
+				Rb_Rd_d1 <= Rb_Rd;
+				Rb_RdValid <= Rb_Rd_d1;
+			end if;
+		end if;
+	  end process valid_proc;
+	  
 end architecture;

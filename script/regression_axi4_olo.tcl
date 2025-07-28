@@ -5,7 +5,7 @@ build src/library/OsvvmLibraries/OsvvmLibraries.pro
       
 if {$::osvvm::ToolName eq "GHDL"} {
     set OMIT_XILINX_FILES 1
-    SetExtendedAnalyzeOptions {-frelaxed -Wno-specs}
+    SetExtendedAnalyzeOptions {-frelaxed -Wno-specs -Wno-shared}
     SetExtendedSimulateOptions {-frelaxed -Wno-specs -Wno-binding}
     SetExtendedRunOptions {--ieee-asserts=disable-at-0}
 }
