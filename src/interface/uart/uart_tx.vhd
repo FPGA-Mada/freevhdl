@@ -75,7 +75,7 @@ begin
                 r <= r_next;
             end if;
         end if;
-    end process;
+    end process proc_sequential;
 
     -- Combinational process: next state and output logic
     proc_combinational: process(r, s_valid, s_data)
@@ -149,6 +149,6 @@ begin
 
         ready_sig <= ready_int;
         r_next <= v;
-    end process;
+    end process proc_combinational;
 
 end Behavioral;
