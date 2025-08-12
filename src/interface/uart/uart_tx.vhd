@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity uart is
+entity uart_tx is
     generic(
         DATA_WIDTH   : positive := 8;          -- Number of data bits per frame
         BAUD_RATE    : positive := 9600;       -- UART baud rate
@@ -20,9 +20,9 @@ entity uart is
         -- UART transmit output
         tx      : out std_logic
     );
-end uart;
+end uart_tx;
 
-architecture Behavioral of uart is
+architecture Behavioral of uart_tx is
 
     constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
 
