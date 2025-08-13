@@ -5,19 +5,16 @@ use IEEE.NUMERIC_STD.ALL;
 entity uart_rx is
     generic (
         DATA_WIDTH   : positive := 8;
-        BAUD_RATE    : positive := 9600;          -- UART baud rate
-        FREQUENCY_HZ : positive := 100_000_000    -- System clock frequency
+        BAUD_RATE    : positive := 9600;
+        FREQUENCY_HZ : positive := 100_000_000
     );
     port (
         clk          : in  std_logic;
         rst          : in  std_logic;
-        -- AXI stream interface
         m_data       : out std_logic_vector(DATA_WIDTH - 1 downto 0);
         m_valid      : out std_logic;
         m_ready      : in  std_logic;
-        -- parity error flag
         error_parity : out std_logic;
-        -- UART RX input
         rx           : in  std_logic
     );
 end uart_rx;
@@ -29,7 +26,6 @@ architecture Behavioral of uart_rx is
 
     type state_t is (WAIT_RX_LOW, START_COUNTING, RECEIVE_DATA, RECEIVE_PARITY, RECEIVE_STOP);
 
-    -- Calculate even parity function
     function calc_even_parity(data: std_logic_vector) return std_logic is
         variable p : std_logic := '0';
     begin
@@ -49,19 +45,19 @@ architecture Behavioral of uart_rx is
     end record;
 
     constant RESET_R : uart_rx_reg := (
-        m_valid          => '0',
-        m_data           => (others => '0'),
+        m_valid           => '0',
+        m_data            => (others => '0'),
         counter_baud_rate => 0,
         counter_bit_width => 0,
-        error_parity     => '0',
-        state            => WAIT_RX_LOW
+        error_parity      => '0',
+        state             => WAIT_RX_LOW
     );
 
     signal r, r_next : uart_rx_reg;
 
 begin
 
-    -- Output assignments
+    -- Output signals
     m_valid      <= r.m_valid;
     m_data       <= r.m_data;
     error_parity <= r.error_parity;
@@ -76,21 +72,21 @@ begin
                 r <= r_next;
             end if;
         end if;
-    end process seq_proc;
+    end process;
 
-    -- Combinational process
+    -- Combinational next-state logic
     comb_proc: process(all)
         variable v : uart_rx_reg;
     begin
         v := r;
 
-        -- Clear valid and error flags when data is accepted
+        -- Clear valid and parity error when downstream accepts data
         if (r.m_valid = '1' and m_ready = '1') then
             v.m_valid := '0';
             v.error_parity := '0';
         end if;
 
-        -- Baud rate counter increment
+        -- Increment baud rate counter
         v.counter_baud_rate := r.counter_baud_rate + 1;
 
         case r.state is
@@ -116,7 +112,6 @@ begin
                 if r.counter_baud_rate = COUNTER_MAX - 1 then
                     v.counter_baud_rate := 0;
                     v.counter_bit_width := r.counter_bit_width + 1;
-                    -- Shift in new rx bit at MSB position (LSB first reception)
                     v.m_data := rx & r.m_data(DATA_WIDTH - 1 downto 1);
 
                     if r.counter_bit_width = DATA_WIDTH - 1 then
@@ -128,13 +123,11 @@ begin
             when RECEIVE_PARITY =>
                 if r.counter_baud_rate = COUNTER_MAX - 1 then
                     v.m_valid := '1';
-
                     if calc_even_parity(r.m_data) = rx then
                         v.error_parity := '0';
                     else
                         v.error_parity := '1';
                     end if;
-
                     v.state := RECEIVE_STOP;
                     v.counter_baud_rate := 0;
                 end if;
@@ -149,10 +142,9 @@ begin
 
             when others =>
                 null;
-
         end case;
 
         r_next <= v;
-    end process comb_proc;
+    end process;
 
 end Behavioral;
