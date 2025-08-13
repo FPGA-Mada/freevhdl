@@ -58,6 +58,7 @@ architecture Behavioral of uart_rx is
     );
 
     signal r, r_next : uart_rx_reg;
+    signal rx_sync1, rx_sync2 : std_logic;
 
 begin
 
@@ -72,6 +73,8 @@ begin
         if rising_edge(clk) then
             if rst = '1' then
                 r <= RESET_R;
+                rx_sync1 <= rx;
+                rx_sync2 <= rx_sync1;
             else
                 r <= r_next;
             end if;
@@ -95,7 +98,7 @@ begin
 
         case r.state is
             when WAIT_RX_LOW =>
-                if rx = '0' then
+                if rx_sync2 = '0' then
                     v.counter_baud_rate := 0;
                     v.state := START_COUNTING;
                     v.error_parity := '0';
@@ -103,7 +106,7 @@ begin
 
             when START_COUNTING =>
                 if r.counter_baud_rate = COUNTER_HALF then
-                    if rx = '0' then
+                    if rx_sync2 = '0' then
                         v.state := RECEIVE_DATA;
                         v.counter_baud_rate := 0;
                         v.counter_bit_width := 0;
@@ -117,7 +120,7 @@ begin
                     v.counter_baud_rate := 0;
                     v.counter_bit_width := r.counter_bit_width + 1;
                     -- Shift in new rx bit at MSB position (LSB first reception)
-                    v.m_data := rx & r.m_data(DATA_WIDTH - 1 downto 1);
+                    v.m_data := rx_sync2 & r.m_data(DATA_WIDTH - 1 downto 1);
 
                     if r.counter_bit_width = DATA_WIDTH - 1 then
                         v.state := RECEIVE_PARITY;
@@ -129,7 +132,7 @@ begin
                 if r.counter_baud_rate = COUNTER_MAX - 1 then
                     v.m_valid := '1';
 
-                    if calc_even_parity(r.m_data) = rx then
+                    if calc_even_parity(r.m_data) = rx_sync2 then
                         v.error_parity := '0';
                     else
                         v.error_parity := '1';
@@ -141,7 +144,7 @@ begin
 
             when RECEIVE_STOP =>
                 if r.counter_baud_rate = COUNTER_MAX - 1 then
-                    if rx = '1' then
+                    if rx_sync2 = '1' then
                         v.state := WAIT_RX_LOW;
                         v.counter_baud_rate := 0;
                     end if;
