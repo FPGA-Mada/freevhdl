@@ -26,7 +26,7 @@ architecture Behavioral of uart_tx is
 
     constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
 
-    type state_t is (RESET,WAIT_VALID_DATA, SEND_START_BIT, SEND_DATA, SEND_PARITY, SEND_STOP_BIT);
+    type state_t is (WAIT_VALID_DATA, SEND_START_BIT, SEND_DATA, SEND_PARITY, SEND_STOP_BIT);
 
     type uart_state_t is record
         tx               : std_logic;
@@ -43,7 +43,7 @@ architecture Behavioral of uart_tx is
 
     constant RESET_STATE : uart_state_t := (
         tx               => '1',
-        state            => RESET,
+        state            => WAIT_VALID_DATA,
         baud_counter     => 0,
         data_bit_counter => 0,
         stop_bit_counter => 0,
@@ -83,8 +83,8 @@ begin
         variable v : uart_state_t;
         variable baud_tick : std_logic := '0';
     begin
-		-- stable variable
         v := r;
+
         -- Generate baud rate tick
         if r.baud_counter = COUNTER_MAX - 1 then
             baud_tick := '1';
@@ -95,8 +95,6 @@ begin
         end if;
 
         case r.state is
-            when RESET => 
-                v.state := WAIT_VALID_DATA;
             when WAIT_VALID_DATA =>
                 v.tx := '1';
                 v.s_ready := '1';
