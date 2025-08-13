@@ -26,7 +26,7 @@ architecture Behavioral of uart_tx is
 
     constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
 
-    type state_t is (WAIT_VALID_DATA, SEND_START_BIT, SEND_DATA, SEND_PARITY, SEND_STOP_BIT);
+    type state_t is (RESET,WAIT_VALID_DATA, SEND_START_BIT, SEND_DATA, SEND_PARITY, SEND_STOP_BIT);
 
     type uart_state_t is record
         tx               : std_logic;
@@ -36,19 +36,20 @@ architecture Behavioral of uart_tx is
         stop_bit_counter : integer range 0 to 1;
         data_buffer      : std_logic_vector(DATA_WIDTH - 1 downto 0);
         parity           : std_logic;
+        s_ready          : std_logic;
     end record;
 
     signal r, r_next : uart_state_t;
-    signal ready_sig : std_logic;
 
     constant RESET_STATE : uart_state_t := (
         tx               => '1',
-        state            => WAIT_VALID_DATA,
+        state            => RESET,
         baud_counter     => 0,
         data_bit_counter => 0,
         stop_bit_counter => 0,
         data_buffer      => (others => '0'),
-        parity           => '0'
+        parity           => '0',
+        s_ready          => '0'
     );
 
     function calc_even_parity(data: std_logic_vector) return std_logic is
@@ -63,7 +64,7 @@ architecture Behavioral of uart_tx is
 begin
 
     tx <= r.tx;
-    s_ready <= ready_sig;
+    s_ready <= r.s_ready;
 
     -- Sequential process: registers update
     proc_sequential: process(clk)
@@ -81,11 +82,9 @@ begin
     proc_combinational: process(r, s_valid, s_data)
         variable v : uart_state_t;
         variable baud_tick : std_logic := '0';
-        variable ready_int : std_logic := '0';  -- Default to '0'
     begin
 		-- stable variable
         v := r;
-		ready_int := '0';
         -- Generate baud rate tick
         if r.baud_counter = COUNTER_MAX - 1 then
             baud_tick := '1';
@@ -96,11 +95,13 @@ begin
         end if;
 
         case r.state is
+            when RESET => 
+                v.state := WAIT_VALID_DATA;
             when WAIT_VALID_DATA =>
                 v.tx := '1';
-                ready_int := '1';
-                if s_valid = '1' and ready_int = '1' then
-                    ready_int := '0';  -- Go low exactly when accepting data
+                v.s_ready := '1';
+                if s_valid = '1' and r.s_ready = '1' then
+                    v.s_ready := '0';
                     v.data_buffer := s_data;
                     v.parity := calc_even_parity(s_data);
                     v.state := SEND_START_BIT;
@@ -147,7 +148,6 @@ begin
                 v.state := WAIT_VALID_DATA;
         end case;
 
-        ready_sig <= ready_int;
         r_next <= v;
     end process;
 
