@@ -1,7 +1,23 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity cdc_data_buffer is
+-- ==============================================================
+--  WARNING:
+--  This module is NOT a safe clock-domain crossing (CDC) circuit.
+--  It does not protect against metastability or data corruption
+--  when clk_A and clk_B are asynchronous.
+--
+--  Use only when:
+--    - clk_A and clk_B are synchronous, OR
+--    - The source data is guaranteed stable long enough
+--      for the destination clock to sample it without risk.
+--
+--  For true asynchronous CDC:
+--    - Use a dual-clock FIFO for multi-bit data, or
+--    - Use two-flop synchronizers for single-bit signals.
+-- ==============================================================
+
+entity dual_clock_pipeline is
   generic (
     Latency     : integer := 3;
     DATA_WIDTH  : integer := 32
@@ -15,9 +31,9 @@ entity cdc_data_buffer is
     rst_B  : in  std_logic;
     data_B : out std_logic_vector(DATA_WIDTH - 1 downto 0)
   );
-end cdc_data_buffer;
+end dual_clock_pipeline;
 
-architecture Behavioral of cdc_data_buffer is
+architecture Behavioral of dual_clock_pipeline is
   type data_latency is array (0 to Latency - 1) of std_logic_vector(DATA_WIDTH - 1 downto 0);
   signal data_delay : data_latency := (others => (others => '0'));
   signal data_A_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
