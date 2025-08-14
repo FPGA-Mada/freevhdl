@@ -65,7 +65,8 @@ entity TestCtrl is
 
       -- Transaction Interfaces
       StreamTxRec        : InOut StreamRecType ;
-      StreamRxRec        : InOut StreamRecType 
+      StreamRxRec        : InOut StreamRecType ;
+	  error_parity       : in std_logic
 
   ) ;
 
