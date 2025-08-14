@@ -124,7 +124,7 @@ begin
 	for J in 0 to 50 loop
 		Get(StreamRxRec, RcvData);
 		log("Data Received: " & to_hstring(RcvData), Level => DEBUG);
-		log("Error parity: " & to_hstring(error_parity));
+		AffirmIfEqual(error_parity, '0', "Manager Read Data: ");
 		Check(SB,RcvData);
 	end loop;
 	
