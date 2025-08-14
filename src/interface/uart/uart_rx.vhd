@@ -38,8 +38,8 @@ architecture Behavioral of uart_rx is
     type uart_rx_reg is record
         m_valid           : std_logic;
         m_data            : std_logic_vector(DATA_WIDTH - 1 downto 0);
-        counter_baud_rate  : integer range 0 to COUNTER_MAX - 1;
-        counter_bit_width  : integer range 0 to DATA_WIDTH - 1;
+        counter_baud_rate  : integer range 0 to COUNTER_MAX -1;
+        counter_bit_width  : integer range 0 to DATA_WIDTH -1;
         error_parity      : std_logic;
         state             : state_t;
     end record;
@@ -87,7 +87,7 @@ begin
         end if;
 
         -- Increment baud rate counter
-        v.counter_baud_rate := r.counter_baud_rate + 1;
+        v.counter_baud_rate := (r.counter_baud_rate + 1) mod COUNTER_MAX;
 
         case r.state is
             when WAIT_RX_LOW =>
@@ -111,7 +111,7 @@ begin
             when RECEIVE_DATA =>
                 if r.counter_baud_rate = COUNTER_MAX - 1 then
                     v.counter_baud_rate := 0;
-                    v.counter_bit_width := r.counter_bit_width + 1;
+                    v.counter_bit_width := (r.counter_bit_width + 1) mod DATA_WIDTH;
                     v.m_data := rx & r.m_data(DATA_WIDTH - 1 downto 1);
 
                     if r.counter_bit_width = DATA_WIDTH - 1 then
