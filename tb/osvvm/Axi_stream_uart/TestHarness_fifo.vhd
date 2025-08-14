@@ -107,7 +107,7 @@ architecture TestHarness of TestHarness_fifo is
       -- Transaction Interfaces
       StreamTxRec     : inout StreamRecType ;
       StreamRxRec     : inout StreamRecType ;
-	  error_parity    : in std_logic;
+	  error_parity    : in std_logic
     ) ;
   end component TestCtrl ;
 
