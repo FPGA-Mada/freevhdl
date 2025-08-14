@@ -84,6 +84,7 @@ architecture TestHarness of TestHarness_fifo is
   signal TxTLast , RxTLast     : std_logic ; 
   
   constant AXI_PARAM_WIDTH : integer := TID_MAX_WIDTH + TDEST_MAX_WIDTH + TUSER_MAX_WIDTH + 1 ;
+  signal error_parity : std_logic := '0';
 
   signal StreamTxRec, StreamRxRec : StreamRecType(
       DataToModel   (AXI_DATA_WIDTH-1  downto 0),
@@ -105,7 +106,8 @@ architecture TestHarness of TestHarness_fifo is
 
       -- Transaction Interfaces
       StreamTxRec     : inout StreamRecType ;
-      StreamRxRec     : inout StreamRecType 
+      StreamRxRec     : inout StreamRecType ;
+	  error_parity    : in std_logic;
     ) ;
   end component TestCtrl ;
 
@@ -134,7 +136,7 @@ begin
         m_ready => TxTReady,         -- received ready
 
         -- Parity error output
-        error_parity => open         
+        error_parity => error_parity         
     );
 
 	
@@ -237,7 +239,8 @@ begin
     
     -- Testbench Transaction Interfaces
     StreamTxRec  => StreamTxRec, 
-    StreamRxRec  => StreamRxRec  
+    StreamRxRec  => StreamRxRec,
+	error_parity => error_parity	
   ) ; 
 
 end architecture TestHarness ;
