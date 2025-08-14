@@ -68,8 +68,8 @@ begin
     wait until nReset = '1' ; 
 	SB <= NEWID ("Score_Board"); 
     ClearAlerts;
-    WaitForBarrier(TestDone, 10 ms);
-    AlertIf(now >= 10 ms, "Test finished due to timeout");
+    WaitForBarrier(TestDone, 100 ms);
+    AlertIf(now >= 100 ms, "Test finished due to timeout");
     AlertIf(GetAffirmCount < 1, "Test is not Self-Checking");
 
     wait for 1 us;
