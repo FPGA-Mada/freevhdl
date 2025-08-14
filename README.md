@@ -2,15 +2,17 @@
 
 [![CI Status](https://github.com/FPGA-Mada/freevhdl/actions/workflows/ci.yml/badge.svg)](https://github.com/FPGA-Mada/freevhdl/actions)
 
-**FreeVHDL** is a collection of reusable, open-source VHDL code snippets and modules designed to support hardware design, learning, and rapid prototyping. This repository aims to be a comprehensive resource for students, engineers, and enthusiasts working with FPGA and ASIC designs.
+**FreeVHDL** is a curated collection of reusable, open-source VHDL modules and code snippets designed to accelerate hardware design, learning, and prototyping. This repository serves as a reliable resource for students, engineers, and FPGA/ASIC enthusiasts seeking high-quality, synthesizable VHDL components.
 
-## Features
+---
 
-- Ready-to-use VHDL components  
-- Portable and synthesizable code  
-- Modular and well-organized structure  
-- Testbenches included for most components  
-- Scripts for automating common simulation tasks  
+## Key Features
+
+-  Ready-to-use, synthesizable VHDL modules
+-  Modular, well-structured, and portable code
+-  Comprehensive testbenches for most components
+-  Utility scripts for automating simulations and builds
+-  Clear documentation and examples for fast integration
 
 ---
 
@@ -18,38 +20,38 @@
 
 ```
 freevhdl/
-├── src/             # VHDL source code (modules, entities, packages)
-│   ├── arithmetic/  # Arithmetic units (e.g., adders, multipliers)
-│   ├── memory/      # Memory blocks (e.g., RAM, ROM, FIFO)
-│   ├── logic/       # Logic blocks (e.g., encoders, decoders)
-│   └── utils/       # Utility components (e.g., clock dividers)
+├── src/             # VHDL source code: modules, entities, packages
+│   ├── arithmetic/  # Arithmetic units (adders, multipliers)
+│   ├── memory/      # Memory blocks (RAM, ROM, FIFO)
+│   ├── logic/       # Logic components (encoders, decoders)
+│   └── utils/       # Utility modules (clock dividers, counters)
 │
 ├── tb/              # Testbenches for validating source code
 │   ├── arithmetic_tb/
 │   ├── memory_tb/
 │   └── ...
 │
-├── script/          # Utility scripts for building and simulation
-│   └── run_ghdl.sh  # Example GHDL simulation script
+├── script/          # Automation scripts for simulation and builds
+│   └── run_ghdl.sh
 │
 ├── doc/             # Documentation, diagrams, datasheets
 │   └── overview.pdf
 │
-├── .github/         # GitHub Actions CI 
+├── .github/         # GitHub Actions CI workflows
 │
-└── README.md        # Project documentation
+└── README.md        # Project overview
 ```
 
 ---
 
-## Simulation Frameworks
+## Simulation & Verification
 
-This repository leverages **OSVVM** (Open Source VHDL Verification Methodology) and **VUnit** to enhance the simulation and verification of the VHDL modules. These frameworks provide advanced testbench capabilities and automation to thoroughly verify the behavior of the IP.
+FreeVHDL leverages modern verification frameworks to ensure robust module testing:
 
-- **OSVVM**: Provides advanced verification features including random stimulus generation, coverage, and verification components for high-quality testbenches.  
-- **VUnit**: An open-source VHDL unit testing framework that automates simulation runs, improves test organization, and integrates well with continuous integration workflows.
+- **[OSVVM](https://www.osvvm.org/)** – Provides advanced verification features including random stimulus, functional coverage, and reusable verification components.
+- **[VUnit](https://vunit.github.io/)** – An open-source unit testing framework for VHDL that simplifies simulation automation, test organization, and CI/CD integration.
 
-Together, these tools help ensure robust, scalable, and repeatable simulation of all modules included in this repository.
+These frameworks enable **reliable, scalable, and repeatable simulations**, improving confidence in all modules provided.
 
 ---
 
@@ -57,36 +59,53 @@ Together, these tools help ensure robust, scalable, and repeatable simulation of
 
 ### Requirements
 
-To simulate the VHDL modules, you can use:
+- [GHDL](https://ghdl.github.io/ghdl/) – Open-source VHDL simulator
+- [GTKWave](http://gtkwave.sourceforge.net/) – Waveform viewer
+- Alternative simulators: ModelSim, XSIM (Xilinx), or [EDA Playground](https://www.edaplayground.com/)
 
-- [GHDL](https://ghdl.github.io/ghdl/) – Open-source VHDL simulator  
-- [GTKWave](http://gtkwave.sourceforge.net/) – Waveform viewer  
-- Alternatively: ModelSim, XSIM (Xilinx), or EDA Playground  
+### Quick Start
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/FPGA-Mada/freevhdl.git
+   cd freevhdl
+   ```
+2. Run simulations using the provided scripts:
+   ```bash
+   ./script/run_ghdl.sh
+   ```
+3. View waveforms with GTKWave:
+   ```bash
+   gtkwave tb/waveform.vcd
+   ```
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or pull requests for:
+Contributions are welcome! You can help by:
 
-- New VHDL modules  
-- Bug fixes or optimizations  
-- Improved documentation or testbenches  
+- Adding new VHDL modules
+- Improving existing modules or testbenches
+- Fixing bugs or optimizing code
+- Enhancing documentation
+
+Please submit issues or pull requests on GitHub.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).  
-See the [LICENSE](./LICENSE) file for full license text.
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the [LICENSE](./LICENSE) file for details.
 
+---
 
-## Authors
+## Authors & Maintainers
 
-Maintained by [Nambinina Rakotojaona](https://github.com/nambhine1).
+- **Nambinina Rakotojaona** – [GitHub](https://github.com/nambhine1)
 
 ---
 
 ## Contact
 
-For suggestions or queries, open an [issue](https://github.com/nambhine1/freevhdl/issues).
+For questions, suggestions, or contributions, open an [issue](https://github.com/nambhine1/freevhdl/issues) or reach out via GitHub.
