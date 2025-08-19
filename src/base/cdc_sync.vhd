@@ -1,29 +1,37 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity non_cdc_data_buffer is
+entity cdc_multi_bit_sync is
   generic (
-    Latency     : integer := 3;
-    DATA_WIDTH  : integer := 32
+    WIDTH   : integer := 8;  -- number of independent single-bit signals
+    STAGES  : integer := 2   -- must be >= 2
   );
   port (
-    clk_A  : in  std_logic;
-    rst_A  : in  std_logic;
-    data_A : in  std_logic_vector(DATA_WIDTH - 1 downto 0);
+    clk_A   : in  std_logic;
+    rst_A   : in  std_logic;
+    data_A  : in  std_logic_vector(WIDTH-1 downto 0);
 
-    clk_B  : in  std_logic;
-    rst_B  : in  std_logic;
-    data_B : out std_logic_vector(DATA_WIDTH - 1 downto 0)
+    clk_B   : in  std_logic;
+    rst_B   : in  std_logic;
+    data_B  : out std_logic_vector(WIDTH-1 downto 0)
   );
-end non_cdc_data_buffer;
+end cdc_multi_bit_sync;
 
-architecture Behavioral of non_cdc_data_buffer is
-  type data_latency is array (0 to Latency - 1) of std_logic_vector(DATA_WIDTH - 1 downto 0);
-  signal data_delay : data_latency := (others => (others => '0'));
-  signal data_A_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
+architecture rtl of cdc_multi_bit_sync is
+  -- Registered in clk_A to remove glitches
+  signal data_A_reg : std_logic_vector(WIDTH-1 downto 0) := (others => '0');
+
+  -- Synchronizer pipeline in clk_B
+  type sync_array is array (0 to STAGES-1) of std_logic_vector(WIDTH-1 downto 0);
+  signal sync_pipe : sync_array := (others => (others => '0'));
+
 begin
+  -- Assert minimum number of stages
+  assert (STAGES >= 2)
+    report "cdc_multi_bit_sync: STAGES must be >= 2 for proper metastability protection"
+    severity FAILURE;
 
-  -- Register input data in clk_A domain
+  -- Input register (clk_A)
   process(clk_A)
   begin
     if rising_edge(clk_A) then
@@ -35,24 +43,21 @@ begin
     end if;
   end process;
 
-  -- Transfer and delay data in clk_B domain
+  -- Synchronizer pipeline (clk_B)
   process(clk_B)
   begin
     if rising_edge(clk_B) then
       if rst_B = '1' then
-        for i in 0 to Latency - 1 loop
-          data_delay(i) <= (others => '0');
-        end loop;
+        sync_pipe <= (others => (others => '0'));
       else
-        data_delay(0) <= data_A_reg;
-        for i in 1 to Latency - 1 loop
-          data_delay(i) <= data_delay(i - 1);
+        sync_pipe(0) <= data_A_reg;              -- stage 0
+        for i in 1 to STAGES-1 loop
+          sync_pipe(i) <= sync_pipe(i-1);        -- retiming
         end loop;
       end if;
     end if;
   end process;
-  
-  -- Output the final delayed value
-  data_B <= data_delay(Latency - 1);
 
-end Behavioral;
+  data_B <= sync_pipe(STAGES-1); -- synchronized output
+
+end rtl;
