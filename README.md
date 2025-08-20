@@ -70,16 +70,6 @@ These frameworks enable **reliable, scalable, and repeatable simulations**, impr
    git clone https://github.com/FPGA-Mada/freevhdl.git
    cd freevhdl
    ```
-2. Run simulations using the provided scripts:
-   ```bash
-   ./script/run_ghdl.sh
-   ```
-3. View waveforms with GTKWave:
-   ```bash
-   gtkwave tb/waveform.vcd
-   ```
-
----
 
 ## Contributing
 
