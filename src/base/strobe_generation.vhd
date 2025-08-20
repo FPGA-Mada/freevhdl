@@ -4,43 +4,48 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity strobe_generation is
     generic (
-        FREQ_SYS_HZ : positive;  -- System clock frequency
-        FREQ_TARGET : positive   -- Desired strobe frequency
+        RETRIGERING : boolean := false;          -- Allow retriggering during countdown
+        FREQ_SYS_HZ : positive;                  -- System clock frequency
+        FREQ_TARGET : positive                   -- Desired strobe frequency
     );
     port (
-        clk       : in  std_logic;  -- System clock
-        rst       : in  std_logic;  -- Synchronous reset
-        tx        : in  std_logic;  -- Input trigger
-        tx_strobe : out std_logic   -- Output strobe pulse (1 cycle)
+        clk       : in  std_logic;               -- System clock
+        rst       : in  std_logic;               -- Synchronous reset
+        tx        : in  std_logic;               -- Input trigger
+        tx_strobe : out std_logic                -- Output strobe pulse (1 cycle)
     );
 end strobe_generation;
 
 architecture Behavioral of strobe_generation is
 
-    -- Calculate the counter max based on system and target frequencies
     constant COUNTER_MAX : positive := FREQ_SYS_HZ / FREQ_TARGET;
 
-    -- State record for two-process style
     type TwoProcess_r is record
-        counter   : integer range 0 to COUNTER_MAX - 1;  -- Countdown for strobe
-        tx_strobe : std_logic;                           -- Output pulse
-        tx        : std_logic;                           -- Delayed input for edge detection
+        counter        : integer range 0 to COUNTER_MAX - 1;
+        tx_strobe      : std_logic;
+        tx             : std_logic;
+        flag_tx_detect : std_logic;
     end record;
 
-    -- Signals to hold current and next state
     signal r, r_next : TwoProcess_r;
 
-    -- Reset value for the record
     constant RESET_R : TwoProcess_r := (
-        counter   => 0,
-        tx_strobe => '0',
-        tx        => '0'
+        counter        => 0,
+        tx_strobe      => '0',
+        tx             => '0',
+        flag_tx_detect => '0'
     );
 
 begin
+    -------------------------------------------------------------------------
+    -- Compile-time check
+    -------------------------------------------------------------------------
+    assert ((FREQ_SYS_HZ > FREQ_TARGET) and (FREQ_TARGET /= 0))
+        report "FREQ_SYS_HZ must be greater than FREQ_TARGET!"
+        severity FAILURE;
 
     -------------------------------------------------------------------------
-    -- Sequential process: register state on rising edge of clk
+    -- Sequential process
     -------------------------------------------------------------------------
     seq_proc: process(clk)
     begin
@@ -54,39 +59,44 @@ begin
     end process seq_proc;
 
     -------------------------------------------------------------------------
-    -- Combinational process: calculate next state
+    -- Combinational process (handles both retriggering modes)
     -------------------------------------------------------------------------
     comb_proc: process(all)
         variable v : TwoProcess_r;
     begin
-        -- Start with current state
         v := r;
-
         v.tx := tx;
-
-        -- Default: no strobe
         v.tx_strobe := '0';
 
-        -- Detect rising edge of tx
-        if (tx = '1' and r.tx = '0') then
-            -- Start countdown to generate strobe
-            v.counter := COUNTER_MAX - 1;
+        if RETRIGERING then
+            -- Retriggering allowed: start countdown on every rising edge of tx
+            if (tx = '1' and r.tx = '0') then
+                v.counter := COUNTER_MAX - 1;
+            elsif (r.counter > 0) then
+                v.counter := r.counter - 1;
+                if v.counter = 0 then
+                    v.tx_strobe := '1';
+                end if;
+            end if;
 
-        -- Countdown for strobe generation
-        elsif (r.counter > 0) then
-            v.counter := r.counter - 1;
-
-            -- Generate 1-cycle strobe when counter reaches 0
-            if r.counter = 1 then
-                v.tx_strobe := '1';
+        else
+            -- No retriggering: ignore new tx edges until countdown finishes
+            if (tx = '1' and r.tx = '0' and r.flag_tx_detect = '0') then
+                v.counter := COUNTER_MAX - 1;
+                v.flag_tx_detect := '1';
+            elsif (r.counter > 0) then
+                v.counter := r.counter - 1;
+                if v.counter = 0 then
+                    v.tx_strobe := '1';
+                    v.flag_tx_detect := '0';
+                end if;
             end if;
         end if;
 
-        -- Assign computed next state
         r_next <= v;
     end process comb_proc;
 
-    -- Connect output
+    -- Output assignment
     tx_strobe <= r.tx_strobe;
 
 end Behavioral;
