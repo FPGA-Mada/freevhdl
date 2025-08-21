@@ -32,15 +32,14 @@ end spi_master;
 
 architecture Behavioral of spi_master is
 
-    -- Calculate SPI clock divider
-    -- Calculate SPI clock divider (with integer rounding)
+    -- SPI clock divider
     constant SPI_DIV  : integer := (FREQ_SYS + FREQ_SPI/2) / FREQ_SPI;
     constant HALF_DIV : integer := SPI_DIV / 2;
 
     -- FSM states
     type state_t is (IDLE, SEND_INST, SEND_DATA, READ_DATA);
 
-    -- Record to hold internal registers
+    -- Internal registers
     type reg_t is record
         clk_count   : integer range 0 to SPI_DIV-1;
         sclk        : std_logic;
@@ -55,21 +54,6 @@ architecture Behavioral of spi_master is
         data_out    : std_logic_vector(DATA_WIDTH-1 downto 0);
         valid_out   : std_logic;
     end record;
-
-    constant RESET_R : reg_t := (
-        clk_count   => 0,
-        sclk        => CPOL,
-        mosi        => '0',
-        cs          => '1',
-        state       => IDLE,
-        instr_shift => (others => '0'),
-        data_shift  => (others => '0'),
-        bit_count   => 0,
-        data_count  => 0,
-        write_flag  => '0',
-        data_out    => (others => '0'),
-        valid_out   => '0'
-    );
 
     signal r, r_next : reg_t;
 
@@ -86,13 +70,20 @@ begin
     data  <= r.data_out;
 
     -----------------------------------------------------------------
-    -- Sequential Process
+    -- Sequential Process (optimized reset)
     -----------------------------------------------------------------
     seq_proc: process(clk)
     begin
         if rising_edge(clk) then
             if rst = '1' then
-                r <= RESET_R;
+                -- Only reset essential signals
+                r.clk_count   <= 0;
+                r.sclk        <= CPOL;
+                r.cs          <= '1';
+                r.state       <= IDLE;
+                r.valid_out   <= '0';
+                r.bit_count   <= 0;
+                r.data_count  <= 0;
             else
                 r <= r_next;
             end if;
@@ -150,7 +141,7 @@ begin
                     v.instr_shift := v.instr_shift(v.instr_shift'high-1 downto 0) & '0';
                 end if;
 
-                -- Increment bit count on sampling edge
+                -- Sample edge
                 if ((CPHA = '0' and sclk_rising) or (CPHA = '1' and sclk_falling)) then
                     v.bit_count := r.bit_count + 1;
                     if v.bit_count >= 2*DATA_WIDTH then
@@ -191,10 +182,10 @@ begin
                 end if;
 
             when others =>
-                v := RESET_R;
+                v.state := IDLE;
         end case;
 
-        -- Assertion to prevent invalid states
+        -- Optional safety assertions
         assert v.bit_count <= 2*DATA_WIDTH report "Bit count overflow" severity warning;
         assert v.data_count <= DATA_WIDTH report "Data count overflow" severity warning;
 
