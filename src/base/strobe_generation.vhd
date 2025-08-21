@@ -74,7 +74,7 @@ begin
                 v.counter := COUNTER_MAX - 1;
             elsif (r.counter > 0) then
                 v.counter := r.counter - 1;
-                if v.counter = 0 then
+                if r.counter = 1 then
                     v.tx_strobe := '1';
                 end if;
             end if;
@@ -86,7 +86,7 @@ begin
                 v.flag_tx_detect := '1';
             elsif (r.counter > 0) then
                 v.counter := r.counter - 1;
-                if v.counter = 0 then
+                if r.counter = 1 then
                     v.tx_strobe := '1';
                     v.flag_tx_detect := '0';
                 end if;
