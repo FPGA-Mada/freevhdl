@@ -60,6 +60,9 @@ architecture Behavioral of spi_master is
     -- Standard write opcode
     constant OP_WRITE : std_logic_vector(DATA_WIDTH-1 downto 0) := std_logic_vector(to_unsigned(1, DATA_WIDTH));
 
+    -- Synchronizer for MISO
+    signal miso_sync1, miso_sync2 : std_logic;
+
 begin
 
     -- Output assignments
@@ -68,6 +71,22 @@ begin
     cs    <= r.cs;
     valid <= r.valid_out;
     data  <= r.data_out;
+
+    -----------------------------------------------------------------
+    -- MISO Synchronizer
+    -----------------------------------------------------------------
+    miso_sync_proc: process(clk)
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                miso_sync1 <= '0';
+                miso_sync2 <= '0';
+            else
+                miso_sync1 <= miso;
+                miso_sync2 <= miso_sync1;
+            end if;
+        end if;
+    end process;
 
     -----------------------------------------------------------------
     -- Sequential Process (optimized reset)
@@ -172,7 +191,8 @@ begin
 
             when READ_DATA =>
                 if ((CPHA = '0' and sclk_rising) or (CPHA = '1' and sclk_falling)) then
-                    v.data_out := v.data_out(v.data_out'high-1 downto 0) & miso;
+                    -- Use synchronized MISO
+                    v.data_out := v.data_out(v.data_out'high-1 downto 0) & miso_sync2;
                     v.data_count := r.data_count + 1;
                     if v.data_count >= DATA_WIDTH then
                         v.valid_out := '1';
