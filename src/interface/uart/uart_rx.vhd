@@ -19,6 +19,7 @@
 --   * Shift register length and parity index computed using functions
 --
 -- Author: Nambinina Rakotojaona
+-- Modified: Use unsigned counters instead of integer
 -------------------------------------------------------------------------------
 
 library IEEE;
@@ -44,6 +45,20 @@ entity uart_rx is
 end uart_rx;
 
 architecture Behavioral of uart_rx is
+
+    ---------------------------------------------------------------------------
+    -- Helper: ceil(log2)
+    ---------------------------------------------------------------------------
+    function ceil_log2(n : positive) return natural is
+        variable res : natural := 0;
+        variable v   : natural := n - 1;
+    begin
+        while v > 0 loop
+            res := res + 1;
+            v   := v / 2;
+        end loop;
+        return res;
+    end function;
 
     ---------------------------------------------------------------------------
     -- Functions
@@ -95,8 +110,8 @@ architecture Behavioral of uart_rx is
 
     type uart_rx_state_t is record
         state        : state_t;
-        baud_counter : integer range 0 to COUNTER_MAX-1;
-        bit_counter  : integer range 0 to FRAME_BITS-1;
+        baud_counter : unsigned(ceil_log2(COUNTER_MAX)-1 downto 0);
+        bit_counter  : unsigned(ceil_log2(FRAME_BITS)-1 downto 0);
         shift_reg    : std_logic_vector(FRAME_BITS-1 downto 0);
         m_valid      : std_logic;
         error_parity : std_logic;
@@ -104,8 +119,8 @@ architecture Behavioral of uart_rx is
 
     constant RESET_STATE : uart_rx_state_t := (
         state        => WAIT_START,
-        baud_counter => 0,
-        bit_counter  => 0,
+        baud_counter => (others => '0'),
+        bit_counter  => (others => '0'),
         shift_reg    => (others => '0'),
         m_valid      => '0',
         error_parity => '0'
@@ -124,18 +139,18 @@ begin
     m_data       <= r.shift_reg(DATA_WIDTH-1 downto 0);
     m_valid      <= r.m_valid;
     error_parity <= r.error_parity;
-    rx_i <= sync_rx(1);
+    rx_i         <= sync_rx(1);
     
     ---------------------------------------------------------------------------
     -- sync rx signal
     ---------------------------------------------------------------------------
     sync_rx_proc: process (clk)
-        begin
-            if rising_edge(clk) then
-                sync_rx(0) <= rx;
-                sync_rx(1) <= sync_rx(0);
-            end if;
-        end process;
+    begin
+        if rising_edge(clk) then
+            sync_rx(0) <= rx;
+            sync_rx(1) <= sync_rx(0);
+        end if;
+    end process;
         
     ---------------------------------------------------------------------------
     -- Sequential process
@@ -163,28 +178,33 @@ begin
         v.error_parity := r.error_parity;
 
         -- Increment baud counter
-        v.baud_counter := (r.baud_counter + 1) mod COUNTER_MAX;
-        baud_tick := '1' when r.baud_counter = COUNTER_MAX-1 else '0';
+        if r.baud_counter = to_unsigned(COUNTER_MAX-1, r.baud_counter'length) then
+            baud_tick := '1';
+            v.baud_counter := (others => '0');
+        else
+            baud_tick := '0';
+            v.baud_counter := r.baud_counter + 1;
+        end if;
 
         case r.state is
 
             ---------------------------------------------------------------
             when WAIT_START =>
                 if rx_i = '0' then -- potential start bit
-                    v.state := START_CONFIRM;
-                    v.baud_counter := 0;
-                    v.shift_reg := (others => '0');
-                    v.bit_counter := 0;
+                    v.state        := START_CONFIRM;
+                    v.baud_counter := (others => '0');
+                    v.shift_reg    := (others => '0');
+                    v.bit_counter  := (others => '0');
                     v.error_parity := '0';
                 end if;
 
             ---------------------------------------------------------------
             when START_CONFIRM =>
-                if r.baud_counter = COUNTER_HALF then
+                if r.baud_counter = to_unsigned(COUNTER_HALF, r.baud_counter'length) then
                     if rx_i = '0' then
-                        v.state := RECEIVE_BITS;
-                        v.baud_counter := 0;
-                        v.bit_counter := 0;
+                        v.state        := RECEIVE_BITS;
+                        v.baud_counter := (others => '0');
+                        v.bit_counter  := (others => '0');
                     else
                         v.state := WAIT_START; -- noise detected
                     end if;
@@ -196,7 +216,7 @@ begin
                     -- shift in LSB first
                     v.shift_reg := rx_i & r.shift_reg(FRAME_BITS-1 downto 1);
 
-                    if r.bit_counter = FRAME_BITS-1 then
+                    if r.bit_counter = to_unsigned(FRAME_BITS-1, r.bit_counter'length) then
                         v.state := CHECK_STOP;
                     else
                         v.bit_counter := r.bit_counter + 1;
@@ -216,8 +236,8 @@ begin
                             v.error_parity := '0';
                         end if;
                     end if;
-                    v.state := WAIT_START;
-                    v.baud_counter := 0;
+                    v.state        := WAIT_START;
+                    v.baud_counter := (others => '0');
                 end if;
 
             when others =>

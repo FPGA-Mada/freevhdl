@@ -16,6 +16,7 @@
 --   * Baud tick is generated internally
 --
 -- Author: Nambinina Rakotojaona
+-- Modified: Counters use unsigned instead of integer (resource-friendly)
 -------------------------------------------------------------------------------
 
 library IEEE;
@@ -44,6 +45,20 @@ entity uart_tx is
 end uart_tx;
 
 architecture Behavioral of uart_tx is
+
+    ---------------------------------------------------------------------------
+    -- Helper function: ceil(log2(n))
+    ---------------------------------------------------------------------------
+    function ceil_log2(n : positive) return natural is
+        variable res : natural := 0;
+        variable v   : natural := n - 1;
+    begin
+        while v > 0 loop
+            res := res + 1;
+            v   := v / 2;
+        end loop;
+        return res;
+    end function;
 
     ---------------------------------------------------------------------------
     -- Local Functions
@@ -106,8 +121,8 @@ architecture Behavioral of uart_tx is
     type uart_state_t is record
         tx               : std_logic;
         state            : state_t;
-        baud_counter     : integer range 0 to COUNTER_MAX - 1;
-        data_bit_counter : integer range 0 to FRAME_BITS - 1;
+        baud_counter     : unsigned(ceil_log2(COUNTER_MAX)-1 downto 0);
+        data_bit_counter : unsigned(ceil_log2(FRAME_BITS)-1 downto 0);
         shift_data_reg   : std_logic_vector(FRAME_BITS-1 downto 0);
         parity           : std_logic;
         s_ready          : std_logic;
@@ -121,13 +136,13 @@ architecture Behavioral of uart_tx is
     constant RESET_STATE : uart_state_t := (
         tx               => '1',              -- idle line
         state            => IDLE,
-        baud_counter     => 0,
-        data_bit_counter => 0,
+        baud_counter     => (others => '0'),
+        data_bit_counter => (others => '0'),
         shift_data_reg   => (others => '0'),
         parity           => '0',
         s_ready          => '0'
     );
-    
+
     -- Shift register procedure: shift right and output LSB
     procedure shift_data_lsb (
         signal current_reg   : in  std_logic_vector;
@@ -137,11 +152,11 @@ architecture Behavioral of uart_tx is
     begin
         -- Output the LSB
         tx_output := current_reg(0);
-    
+
         -- Shift right and fill MSB with '0'
         next_reg := '0' & current_reg(current_reg'high downto 1);
     end procedure shift_data_lsb;
-    
+
 begin
 
     ---------------------------------------------------------------------------
@@ -190,9 +205,9 @@ begin
         baud_tick := '0';
 
         -- Baud counter logic
-        if r.baud_counter = COUNTER_MAX - 1 then
+        if r.baud_counter = to_unsigned(COUNTER_MAX - 1, r.baud_counter'length) then
             baud_tick := '1';
-            v.baud_counter := 0;
+            v.baud_counter := (others => '0');
         else
             v.baud_counter := r.baud_counter + 1;
         end if;
@@ -202,23 +217,23 @@ begin
             when IDLE =>
                 v.tx := '1';
                 v.s_ready := '1';
-                
+
                 if s_valid = '1' then
                     v.s_ready := '0';
                     v.parity := calc_parity(s_data, PARITY);
                     v.shift_data_reg := packet_format(s_data, v.parity, PARITY);
                     v.state := TRANSMIT;
-                    v.data_bit_counter := 0;
+                    v.data_bit_counter := (others => '0');
                 end if;
 
             -------------------------------------------------------------------
             when TRANSMIT =>
                 if baud_tick = '1' then
                     -- shift data LSB
-                    shift_data_lsb(r.shift_data_reg,v.shift_data_reg,v.tx);
-                    if r.data_bit_counter = FRAME_BITS - 1 then
+                    shift_data_lsb(r.shift_data_reg, v.shift_data_reg, v.tx);
+                    if r.data_bit_counter = to_unsigned(FRAME_BITS - 1, r.data_bit_counter'length) then
                         v.state := IDLE;
-                        v.data_bit_counter := 0;
+                        v.data_bit_counter := (others => '0');
                     else
                         v.data_bit_counter := r.data_bit_counter + 1;
                     end if;
