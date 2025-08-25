@@ -51,16 +51,6 @@ architecture Behavioral of uart_tx is
         return res;
     end function;
 
-    -- Round a real number to nearest integer
-    function round_real(x : real) return integer is
-    begin
-        if x >= 0.0 then
-            return integer(x + 0.5);
-        else
-            return integer(x - 0.5);
-        end if;
-    end function;
-
     -- Build UART frame (stop + optional parity + data + start)
     function packet_format (
         data        : std_logic_vector;
@@ -97,7 +87,7 @@ architecture Behavioral of uart_tx is
     ---------------------------------------------------------------------------
     -- Constants
     ---------------------------------------------------------------------------
-    constant COUNTER_MAX : positive := round_real(FREQUENCY_HZ / BAUD_RATE);
+    constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
     constant FRAME_BITS  : positive := get_frame_bits(DATA_WIDTH, PARITY);
     
     constant BAUD_CNT_WIDTH : positive := ceil_log2(COUNTER_MAX);
