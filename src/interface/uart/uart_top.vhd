@@ -56,7 +56,8 @@ begin
         generic map (
             DATA_WIDTH   => DATA_WIDTH,
             BAUD_RATE    => BAUD_RATE,
-            FREQUENCY_HZ => FREQUENCY_HZ
+            FREQUENCY_HZ => FREQUENCY_HZ,
+            PARITY       => PARITY
         )
         port map (
             clk          => clk,

@@ -15,7 +15,7 @@
 --   * rst is synchronous active-high
 --   * Baud tick is generated internally
 --
--- Author: Senior-Style Reference Implementation
+-- Author: Nambinina Rakotojaona
 -------------------------------------------------------------------------------
 
 library IEEE;
