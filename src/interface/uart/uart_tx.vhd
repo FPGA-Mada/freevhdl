@@ -83,9 +83,9 @@ architecture Behavioral of uart_tx is
         variable frame : std_logic_vector(get_frame_bits(data'length, parity)-1 downto 0);
     begin
         if parity = "NONE" then
-            frame := '0' & data & '1';  -- start + data + stop
+            frame := '1' & data & '0';  -- start + data + stop
         else
-            frame := '0' & data & parity_bit & '1';  -- start + data + parity + stop
+            frame := '1' & parity_bit & data & '0';  -- start + data + parity + stop
         end if;
         return frame;
     end function;
