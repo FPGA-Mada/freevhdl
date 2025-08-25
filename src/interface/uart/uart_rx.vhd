@@ -112,6 +112,9 @@ architecture Behavioral of uart_rx is
     );
 
     signal r, r_next : uart_rx_state_t;
+    
+    signal sync_rx : std_logic_vector (1 downto 0);
+    signal rx_i : std_logic;
 
 begin
 
@@ -121,7 +124,19 @@ begin
     m_data       <= r.shift_reg(DATA_WIDTH-1 downto 0);
     m_valid      <= r.m_valid;
     error_parity <= r.error_parity;
-
+    rx_i <= sync_rx(1);
+    
+    ---------------------------------------------------------------------------
+    -- sync rx signal
+    ---------------------------------------------------------------------------
+    sync_rx_proc: process (clk)
+        begin
+            if rising_edge(clk) then
+                sync_rx(0) <= rx;
+                sync_rx(1) <= sync_rx(0);
+            end if;
+        end process;
+        
     ---------------------------------------------------------------------------
     -- Sequential process
     ---------------------------------------------------------------------------
@@ -155,7 +170,7 @@ begin
 
             ---------------------------------------------------------------
             when WAIT_START =>
-                if rx = '0' then -- potential start bit
+                if rx_i = '0' then -- potential start bit
                     v.state := START_CONFIRM;
                     v.baud_counter := 0;
                     v.shift_reg := (others => '0');
@@ -166,7 +181,7 @@ begin
             ---------------------------------------------------------------
             when START_CONFIRM =>
                 if r.baud_counter = COUNTER_HALF then
-                    if rx = '0' then
+                    if rx_i = '0' then
                         v.state := RECEIVE_BITS;
                         v.baud_counter := 0;
                         v.bit_counter := 0;
@@ -179,7 +194,7 @@ begin
             when RECEIVE_BITS =>
                 if baud_tick = '1' then
                     -- shift in LSB first
-                    v.shift_reg := rx & r.shift_reg(FRAME_BITS-1 downto 1);
+                    v.shift_reg := rx_i & r.shift_reg(FRAME_BITS-1 downto 1);
 
                     if r.bit_counter = FRAME_BITS-1 then
                         v.state := CHECK_STOP;
@@ -192,7 +207,7 @@ begin
             when CHECK_STOP =>
                 if baud_tick = '1' then
                     -- stop bit check
-                    if rx = '1' then
+                    if rx_i = '1' then
                         v.m_valid := '1';
                         if PARITY /= "NONE" then
                             v.error_parity := calc_parity(r.shift_reg(DATA_WIDTH-1 downto 0), PARITY)
