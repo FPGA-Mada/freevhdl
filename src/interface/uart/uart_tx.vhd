@@ -59,6 +59,18 @@ architecture Behavioral of uart_tx is
         end if;
     end function;
 
+    -- Compute required counter width
+    function ceil_log2(n : positive) return natural is
+        variable res : natural := 0;
+        variable v   : natural := n - 1;
+    begin
+        while v > 0 loop
+            res := res + 1;
+            v   := v / 2;
+        end loop;
+        return res;
+    end function;
+
     -- Build UART frame (stop + optional parity + data + start)
     function packet_format (
         data        : std_logic_vector;
@@ -97,6 +109,9 @@ architecture Behavioral of uart_tx is
     ---------------------------------------------------------------------------
     constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
     constant FRAME_BITS  : positive := get_frame_bits(DATA_WIDTH, PARITY);
+    
+    constant BAUD_CNT_WIDTH : positive := ceil_log2(COUNTER_MAX);
+    constant BIT_CNT_WIDTH  : positive := ceil_log2(FRAME_BITS);
 
     ---------------------------------------------------------------------------
     -- Type / Record Declarations
@@ -106,8 +121,8 @@ architecture Behavioral of uart_tx is
     type uart_state_t is record
         tx               : std_logic;
         state            : state_t;
-        baud_counter     : integer range 0 to COUNTER_MAX - 1;
-        data_bit_counter : integer range 0 to FRAME_BITS - 1;
+        baud_counter     : unsigned(BAUD_CNT_WIDTH-1 downto 0);
+        data_bit_counter : unsigned(BIT_CNT_WIDTH-1 downto 0);
         shift_data_reg   : std_logic_vector(FRAME_BITS-1 downto 0);
         parity           : std_logic;
         s_ready          : std_logic;
@@ -121,8 +136,8 @@ architecture Behavioral of uart_tx is
     constant RESET_STATE : uart_state_t := (
         tx               => '1',              -- idle line
         state            => IDLE,
-        baud_counter     => 0,
-        data_bit_counter => 0,
+        baud_counter     => (others => '0'),
+        data_bit_counter => (others => '0'),
         shift_data_reg   => (others => '0'),
         parity           => '0',
         s_ready          => '0'
@@ -184,16 +199,16 @@ begin
     ---------------------------------------------------------------------------
     proc_combinational: process(all)
         variable v         : uart_state_t;
-        variable baud_tick  : std_logic := '0';
+        variable baud_tick : std_logic;
     begin
         v := r;
+        baud_tick := '0';
 
-        -- Baud counter increment (simpler than modulo)
-        if r.baud_counter >= COUNTER_MAX - 1 then
+        -- Baud counter increment
+        if r.baud_counter = to_unsigned(COUNTER_MAX - 1, BAUD_CNT_WIDTH) then
             baud_tick := '1';
-            v.baud_counter := 0;
+            v.baud_counter := (others => '0');
         else
-            baud_tick := '0';
             v.baud_counter := r.baud_counter + 1;
         end if;
 
@@ -208,7 +223,7 @@ begin
                     v.parity := calc_parity(s_data, PARITY);
                     v.shift_data_reg := packet_format(s_data, v.parity, PARITY);
                     v.state := TRANSMIT;
-                    v.data_bit_counter := 0;
+                    v.data_bit_counter := (others => '0');
                 end if;
 
             -------------------------------------------------------------------
@@ -216,10 +231,10 @@ begin
                 -- Transmit frame LSB first
                 if baud_tick = '1' then
                     -- call procedure shift data
-                    shift_data_lsb (r.shift_data_reg, v.shift_data_reg,v.tx);
-                    if v.data_bit_counter = FRAME_BITS - 1 then
+                    shift_data_lsb (r.shift_data_reg, v.shift_data_reg, v.tx);
+                    if v.data_bit_counter = to_unsigned(FRAME_BITS - 1, BIT_CNT_WIDTH) then
                         v.state := IDLE;
-                        v.data_bit_counter := 0;
+                        v.data_bit_counter := (others => '0');
                     else
                         v.data_bit_counter := v.data_bit_counter + 1;
                     end if;
