@@ -59,7 +59,7 @@ architecture Behavioral of uart_tx is
         end if;
     end function;
 
-    -- Build UART frame (stop + optional parity + data + start)
+    -- Build UART frame (start + data + optional parity + stop)
     function packet_format (
         data        : std_logic_vector;
         parity_bit  : std_logic;
@@ -68,9 +68,9 @@ architecture Behavioral of uart_tx is
         variable frame : std_logic_vector(get_frame_bits(data'length, parity)-1 downto 0);
     begin
         if parity = "NONE" then
-            frame := '1' & data & '0';  -- stop + data + start
+            frame := '0' & data & '1';  -- start + data + stop
         else
-            frame := '1' & parity_bit & data & '0';  -- stop + parity + data + start
+            frame := '0' & data & parity_bit & '1';  -- start + data + parity + stop
         end if;
         return frame;
     end function;
@@ -127,7 +127,20 @@ architecture Behavioral of uart_tx is
         parity           => '0',
         s_ready          => '0'
     );
-
+    
+    -- Shift register procedure: shift right and output LSB
+    procedure shift_data_lsb (
+        signal current_reg   : in  std_logic_vector;
+        variable next_reg    : out std_logic_vector;
+        variable tx_output   : out std_logic
+    ) is
+    begin
+        -- Output the LSB
+        tx_output := current_reg(0);
+        -- Shift right and fill MSB with '0'
+        next_reg := '0' & current_reg(FRAME_BITS-1 downto 1);
+    end procedure shift_data_lsb;
+    
 begin
 
     ---------------------------------------------------------------------------
@@ -170,26 +183,26 @@ begin
     ---------------------------------------------------------------------------
     proc_combinational: process(all)
         variable v         : uart_state_t;
-        variable baud_tick  : std_logic := '0';
+        variable baud_tick : std_logic;
     begin
         v := r;
+        baud_tick := '0';
 
-        -- Baud counter increment (simpler than modulo)
-        if r.baud_counter >= COUNTER_MAX - 1 then
+        -- Baud counter logic
+        if r.baud_counter = COUNTER_MAX - 1 then
             baud_tick := '1';
             v.baud_counter := 0;
         else
-            baud_tick := '0';
             v.baud_counter := r.baud_counter + 1;
         end if;
 
         case r.state is
             -------------------------------------------------------------------
             when IDLE =>
-                -- Idle line, ready to accept new data
                 v.tx := '1';
                 v.s_ready := '1';
-                if s_valid = '1' and r.s_ready = '1' then
+                
+                if s_valid = '1' then
                     v.s_ready := '0';
                     v.parity := calc_parity(s_data, PARITY);
                     v.shift_data_reg := packet_format(s_data, v.parity, PARITY);
@@ -199,17 +212,18 @@ begin
 
             -------------------------------------------------------------------
             when TRANSMIT =>
-                -- Transmit frame LSB first
                 if baud_tick = '1' then
-                    v.tx := v.shift_data_reg(v.shift_data_reg'low);  -- transmit LSB
-                    -- Shift right by one, pad MSB with '0'
-                    v.shift_data_reg := '0' & v.shift_data_reg(FRAME_BITS-1 downto 1);
-                    if v.data_bit_counter = FRAME_BITS - 1 then
+                    -- shift data LSB
+                    shift_data_lsb(r.shift_data_reg,v.shift_data_reg,v.tx);
+                    if r.data_bit_counter = FRAME_BITS - 1 then
                         v.state := IDLE;
                         v.data_bit_counter := 0;
                     else
-                        v.data_bit_counter := v.data_bit_counter + 1;
+                        v.data_bit_counter := r.data_bit_counter + 1;
                     end if;
+                else
+                    -- Keep transmitting the same bit when not shifting
+                    v.tx := r.tx;
                 end if;
 
             -------------------------------------------------------------------
