@@ -137,8 +137,9 @@ architecture Behavioral of uart_tx is
     begin
         -- Output the LSB
         tx_output := current_reg(0);
+    
         -- Shift right and fill MSB with '0'
-        next_reg := '0' & current_reg(FRAME_BITS-1 downto 1);
+        next_reg := '0' & current_reg(current_reg'high downto 1);
     end procedure shift_data_lsb;
     
 begin
