@@ -49,11 +49,8 @@ architecture Behavioral of uart_tx is
     -- Local Functions
     ---------------------------------------------------------------------------
 
-    -- Function to compute total frame bits (start + data + parity? + stop)
-    function get_frame_bits(
-        DATA_WIDTH : positive;
-        PARITY     : string
-    ) return positive is
+    -- Compute total frame bits (start + data + parity? + stop)
+    function get_frame_bits(DATA_WIDTH : positive; PARITY : string) return positive is
     begin
         if PARITY = "NONE" then
             return DATA_WIDTH + 2; -- start + data + stop
@@ -62,23 +59,36 @@ architecture Behavioral of uart_tx is
         end if;
     end function;
 
-    -- Parity calculator
+    -- Build UART frame (stop + optional parity + data + start)
+    function packet_format (
+        data        : std_logic_vector;
+        parity_bit  : std_logic;
+        parity      : string
+    ) return std_logic_vector is
+        variable frame : std_logic_vector(get_frame_bits(data'length, parity)-1 downto 0);
+    begin
+        if parity = "NONE" then
+            frame := '1' & data & '0';  -- stop + data + start
+        else
+            frame := '1' & parity_bit & data & '0';  -- stop + parity + data + start
+        end if;
+        return frame;
+    end function;
+
+    -- Calculate parity bit
     function calc_parity(data : std_logic_vector; parity_in : string) return std_logic is
         variable p : std_logic := '0';
     begin
-        -- XOR of all bits
         for i in data'range loop
             p := p xor data(i);
         end loop;
 
         if parity_in = "NONE" then
-            return '0';  -- unused
-        elsif parity_in = "EVEN" then
-            return p;    -- XOR gives even parity
-        elsif parity_in = "ODD" then
-            return not p;
-        else
             return '0';
+        elsif parity_in = "EVEN" then
+            return p;
+        else  -- ODD
+            return not p;
         end if;
     end function;
 
@@ -91,7 +101,7 @@ architecture Behavioral of uart_tx is
     ---------------------------------------------------------------------------
     -- Type / Record Declarations
     ---------------------------------------------------------------------------
-    type state_t is (WAIT_VALID_DATA, SEND_DATA);
+    type state_t is (IDLE, TRANSMIT);
 
     type uart_state_t is record
         tx               : std_logic;
@@ -110,7 +120,7 @@ architecture Behavioral of uart_tx is
     ---------------------------------------------------------------------------
     constant RESET_STATE : uart_state_t := (
         tx               => '1',              -- idle line
-        state            => WAIT_VALID_DATA,
+        state            => IDLE,
         baud_counter     => 0,
         data_bit_counter => 0,
         shift_data_reg   => (others => '0'),
@@ -159,56 +169,52 @@ begin
     -- Combinational process: next-state and output logic
     ---------------------------------------------------------------------------
     proc_combinational: process(all)
-        variable v : uart_state_t;
-        variable baud_tick : std_logic := '0';
+        variable v         : uart_state_t;
+        variable baud_tick  : std_logic := '0';
     begin
         v := r;
 
-        -- Baud counter increment
-        v.baud_counter := (r.baud_counter + 1) mod COUNTER_MAX;
-        baud_tick := '1' when r.baud_counter = COUNTER_MAX - 1 else '0';
+        -- Baud counter increment (simpler than modulo)
+        if r.baud_counter >= COUNTER_MAX - 1 then
+            baud_tick := '1';
+            v.baud_counter := 0;
+        else
+            baud_tick := '0';
+            v.baud_counter := r.baud_counter + 1;
+        end if;
 
         case r.state is
             -------------------------------------------------------------------
-            when WAIT_VALID_DATA =>
-                v.tx := '1';    -- idle line
+            when IDLE =>
+                -- Idle line, ready to accept new data
+                v.tx := '1';
                 v.s_ready := '1';
                 if s_valid = '1' and r.s_ready = '1' then
                     v.s_ready := '0';
                     v.parity := calc_parity(s_data, PARITY);
-
-                    if (PARITY = "NONE") then
-                        -- Format: stop(1) & data & start(0)
-                        v.shift_data_reg := '1' & s_data & '0';
-                    else
-                        -- Format: stop(1) & parity & data & start(0)
-                        v.shift_data_reg := '1' & v.parity & s_data & '0';
-                    end if;
-
-                    v.state := SEND_DATA;
+                    v.shift_data_reg := packet_format(s_data, v.parity, PARITY);
+                    v.state := TRANSMIT;
                     v.data_bit_counter := 0;
                 end if;
 
             -------------------------------------------------------------------
-            when SEND_DATA =>
+            when TRANSMIT =>
+                -- Transmit frame LSB first
                 if baud_tick = '1' then
-                    -- Transmit LSB first
-                    v.tx := r.shift_data_reg(0);
-                    -- Shift right, pad MSB with '0'
-                    v.shift_data_reg := '0' & r.shift_data_reg(FRAME_BITS-1 downto 1);
-
-                    if (r.data_bit_counter = FRAME_BITS - 1) then
-                        v.state := WAIT_VALID_DATA;
+                    v.tx := v.shift_data_reg(v.shift_data_reg'low);  -- transmit LSB
+                    -- Shift right by one, pad MSB with '0'
+                    v.shift_data_reg := '0' & v.shift_data_reg(FRAME_BITS-1 downto 1);
+                    if v.data_bit_counter = FRAME_BITS - 1 then
+                        v.state := IDLE;
                         v.data_bit_counter := 0;
-                        v.tx := '1'; -- return line to idle
                     else
-                        v.data_bit_counter := r.data_bit_counter + 1;
+                        v.data_bit_counter := v.data_bit_counter + 1;
                     end if;
                 end if;
 
             -------------------------------------------------------------------
             when others =>
-                v.state := WAIT_VALID_DATA;
+                v.state := IDLE;
         end case;
 
         r_next <= v;
