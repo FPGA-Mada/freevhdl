@@ -6,7 +6,8 @@ entity uart_top is
     generic (
         DATA_WIDTH   : positive := 8;
         BAUD_RATE    : positive := 9600;
-        FREQUENCY_HZ : positive := 100_000_000
+        FREQUENCY_HZ : positive := 100_000_000;
+        PARITY       : string := "EVEN"
     );
     port (
         clk     : in  std_logic;
@@ -38,7 +39,8 @@ begin
         generic map (
             DATA_WIDTH   => DATA_WIDTH,
             BAUD_RATE    => BAUD_RATE,
-            FREQUENCY_HZ => FREQUENCY_HZ
+            FREQUENCY_HZ => FREQUENCY_HZ,
+            PARITY       => PARITY
         )
         port map (
             clk     => clk,

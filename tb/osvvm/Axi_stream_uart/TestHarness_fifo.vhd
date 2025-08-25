@@ -68,6 +68,7 @@ architecture TestHarness of TestHarness_fifo is
   constant TID_MAX_WIDTH    : integer := 8 ;
   constant TDEST_MAX_WIDTH  : integer := 4 ;
   constant TUSER_MAX_WIDTH  : integer := 5 ;
+  constant PARITY           : string := "EVEN";
 
   constant INIT_ID     : std_logic_vector(TID_MAX_WIDTH-1 downto 0)   := (others => '0') ; 
   constant INIT_DEST   : std_logic_vector(TDEST_MAX_WIDTH-1 downto 0) := (others => '0') ; 
@@ -119,7 +120,8 @@ begin
     generic map (
         DATA_WIDTH   => 8,           -- width of UART data
         BAUD_RATE    => 9600,        -- desired baud rate
-        FREQUENCY_HZ => 100_000_000  -- input clock frequency
+        FREQUENCY_HZ => 100_000_000,  -- input clock frequency
+		PARITY       => PARITY
     )
     port map (
         clk     => Clk,              -- connect to system clock
