@@ -1,23 +1,3 @@
--------------------------------------------------------------------------------
--- UART Transmitter (uart_tx.vhd)
---
--- Features:
---   * Parameterized data width
---   * Configurable parity: NONE, EVEN, ODD
---   * AXI-Stream style interface (s_valid / s_ready)
---
--- Frame Format:
---   Start bit ('0'), DATA_WIDTH bits (LSB first),
---   Optional parity bit, Stop bit ('1')
---
--- Notes:
---   * Single clock domain (clk)
---   * rst is synchronous active-high
---   * Baud tick is generated internally
---
--- Author: Nambinina Rakotojaona
--------------------------------------------------------------------------------
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -46,7 +26,7 @@ end uart_tx;
 architecture Behavioral of uart_tx is
 
     ---------------------------------------------------------------------------
-    -- Local Functions
+    -- Custom Functions
     ---------------------------------------------------------------------------
 
     -- Compute total frame bits (start + data + parity? + stop)
@@ -69,6 +49,16 @@ architecture Behavioral of uart_tx is
             v   := v / 2;
         end loop;
         return res;
+    end function;
+
+    -- Round a real number to nearest integer
+    function round_real(x : real) return integer is
+    begin
+        if x >= 0.0 then
+            return integer(x + 0.5);
+        else
+            return integer(x - 0.5);
+        end if;
     end function;
 
     -- Build UART frame (stop + optional parity + data + start)
@@ -107,7 +97,7 @@ architecture Behavioral of uart_tx is
     ---------------------------------------------------------------------------
     -- Constants
     ---------------------------------------------------------------------------
-    constant COUNTER_MAX : positive := FREQUENCY_HZ / BAUD_RATE;
+    constant COUNTER_MAX : positive := round_real(FREQUENCY_HZ / BAUD_RATE);
     constant FRAME_BITS  : positive := get_frame_bits(DATA_WIDTH, PARITY);
     
     constant BAUD_CNT_WIDTH : positive := ceil_log2(COUNTER_MAX);
@@ -215,7 +205,6 @@ begin
         case r.state is
             -------------------------------------------------------------------
             when IDLE =>
-                -- Idle line, ready to accept new data
                 v.tx := '1';
                 v.s_ready := '1';
                 if s_valid = '1' and r.s_ready = '1' then
@@ -228,9 +217,7 @@ begin
 
             -------------------------------------------------------------------
             when TRANSMIT =>
-                -- Transmit frame LSB first
                 if baud_tick = '1' then
-                    -- call procedure shift data
                     shift_data_lsb (r.shift_data_reg, v.shift_data_reg, v.tx);
                     if v.data_bit_counter = to_unsigned(FRAME_BITS - 1, BIT_CNT_WIDTH) then
                         v.state := IDLE;
@@ -240,7 +227,6 @@ begin
                     end if;
                 end if;
 
-            -------------------------------------------------------------------
             when others =>
                 v.state := IDLE;
         end case;
