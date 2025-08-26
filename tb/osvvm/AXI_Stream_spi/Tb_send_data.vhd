@@ -64,7 +64,7 @@ architecture AxiSendGet2 of TestCtrl is
 	procedure send_read(
 		signal addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
 		signal instr_out: out std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0);
+		signal addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0)
 	) is
 	begin
 		instr_out <= x"00";

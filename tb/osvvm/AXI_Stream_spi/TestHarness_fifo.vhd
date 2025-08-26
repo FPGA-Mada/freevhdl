@@ -68,7 +68,8 @@ architecture TestHarness of TestHarness_fifo is
     generic (
       ID_LEN   : integer;
       DEST_LEN : integer;
-      USER_LEN : integer
+      USER_LEN : integer;
+	  DATA_WIDTH : integer;
     );
     port (
       nReset      : inout std_logic;
