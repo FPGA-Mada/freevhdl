@@ -47,12 +47,12 @@ architecture AxiSendGet2 of TestCtrl is
   signal   SB : ScoreboardIDType;
 		
 	procedure send_write(
-		signal addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal data_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal instr_out: out std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal data_out : out std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal valid_out : out std_logic
+		addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
+	    data_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
+	    instr_out: out std_logic_vector(DATA_WIDTH -1 downto 0);
+	    addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0);
+	    data_out : out std_logic_vector(DATA_WIDTH -1 downto 0);
+	    valid_out : out std_logic
 	) is
 	begin
 		instr_out <= x"01";
@@ -62,9 +62,9 @@ architecture AxiSendGet2 of TestCtrl is
 	end procedure send_write;
 	
 	procedure send_read(
-		signal addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal instr_out: out std_logic_vector(DATA_WIDTH -1 downto 0);
-		signal addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0)
+	    addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
+		 instr_out: out std_logic_vector(DATA_WIDTH -1 downto 0);
+		 addr_out : out std_logic_vector(DATA_WIDTH -1 downto 0)
 	) is
 	begin
 		instr_out <= x"00";
