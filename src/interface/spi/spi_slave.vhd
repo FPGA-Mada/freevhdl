@@ -33,27 +33,40 @@ architecture Behavioral of spi_slave is
     type state_t is (WAIT_SS, CAPTURE_CMD, CAPTURE_DATA, CAPTURE_READ);
 
     --------------------------------------------------------------------
-    -- FSM record
+    -- FSM register record
     --------------------------------------------------------------------
     type fsm_reg_t is record
-        sclk      : std_logic;
-        counter   : integer range 0 to 3*DATA_WIDTH-1;
-        state     : state_t;
-        valid     : std_logic;
-        data      : std_logic_vector(DATA_WIDTH-1 downto 0);
-        miso      : std_logic;
-        shift_reg : std_logic_vector(3*DATA_WIDTH-1 downto 0);
-        addr      : std_logic_vector(DATA_WIDTH-1 downto 0);
-        data_from_master : std_logic_vector(DATA_WIDTH-1 downto 0);
+        sclk            : std_logic;
+        counter         : integer range 0 to 3*DATA_WIDTH-1;
+        state           : state_t;
+        valid           : std_logic;
+        data            : std_logic_vector(DATA_WIDTH-1 downto 0);
+        miso            : std_logic;
+        shift_reg       : std_logic_vector(3*DATA_WIDTH-1 downto 0);
+        addr            : std_logic_vector(DATA_WIDTH-1 downto 0);
+        data_from_master: std_logic_vector(DATA_WIDTH-1 downto 0);
     end record;
 
     signal r, r_next : fsm_reg_t;
 
     --------------------------------------------------------------------
-    -- Synchronizer signals (moved OUT of block!)
+    -- Synchronizer signals
     --------------------------------------------------------------------
     signal ss_sync, sclk_sync, mosi_sync : std_logic_vector(1 downto 0);
     signal ss_i, sclk_i, mosi_i          : std_logic;
+
+    --------------------------------------------------------------------
+    -- Shift MSB-first procedure
+    --------------------------------------------------------------------
+    procedure shift_data_msb (
+        signal current_data : in std_logic_vector;
+        variable next_data  : out std_logic_vector;
+        variable bit_out    : out std_logic
+    ) is
+    begin
+        bit_out  := current_data(current_data'high);
+        next_data := current_data(current_data'high-1 downto 0) & '0';
+    end procedure shift_data_msb;
 
 begin
 
@@ -65,7 +78,7 @@ begin
     miso  <= r.miso;
 
     --------------------------------------------------------------------
-    -- SPI synchronizer (no block, signals declared outside)
+    -- SPI synchronizer
     --------------------------------------------------------------------
     sync_proc: process(clk)
     begin
@@ -110,19 +123,20 @@ begin
         v := r;
 
         -- Detect SCLK edges
-        rising_sclk  := '1' when (sclk_i = '1' and r.sclk = '0') else '0';
-        falling_sclk := '1' when (sclk_i = '0' and r.sclk = '1') else '0';
+        rising_sclk  := sclk_i and not  r.sclk;
+        falling_sclk := not sclk_i and r.sclk;
 
-        -- Update registered sclk
+        -- Update registered SCLK
         v.sclk := sclk_i;
 
-        -- Clear valid when master accepts
+        -- Clear valid when master accepts data
         if r.valid = '1' and ready = '1' then
             v.valid := '0';
         end if;
 
         -- FSM
         case r.state is
+
             when WAIT_SS =>
                 if ss_i = '0' then
                     v.state   := CAPTURE_CMD;
@@ -149,9 +163,9 @@ begin
                     v.counter   := r.counter + 1;
 
                     if r.counter = 3*DATA_WIDTH-1 then
-                        v.state := WAIT_SS;
-                        v.valid := '1';
-                        v.data  := v.shift_reg(DATA_WIDTH-1 downto 0);
+                        v.state            := WAIT_SS;
+                        v.valid            := '1';
+                        v.data             := v.shift_reg(DATA_WIDTH-1 downto 0);
                         v.data_from_master := v.data;
                     end if;
                 end if;
@@ -170,11 +184,10 @@ begin
                 -- Drive MISO
                 if falling_sclk = '1' then
                     if r.counter >= 2*DATA_WIDTH then
-                        v.miso := r.data_from_master(r.data_from_master'high);
-                        v.data_from_master := r.data_from_master(r.data_from_master'high-1 downto 0) & '0';
+                        shift_data_msb(r.data_from_master, v.data_from_master, v.miso);
 
                         if r.counter = 3*DATA_WIDTH-1 then
-                            v.state := WAIT_SS;
+                            v.state   := WAIT_SS;
                             v.counter := 0;
                         end if;
                     end if;
@@ -182,10 +195,12 @@ begin
 
             when others =>
                 null;
+
         end case;
 
         -- Assign next state
         r_next <= v;
+
     end process;
 
 end Behavioral;

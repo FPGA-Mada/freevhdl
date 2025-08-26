@@ -3,7 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity spi_master is
     generic(
-        CPOL : boolean := false;
+        CPOL       : boolean := false;
         DATA_WIDTH : positive := 8;
         FREQ_SYS   : positive := 100_000_000;
         FREQ_SPI   : positive := 1_000_000
@@ -28,12 +28,15 @@ end spi_master;
 
 architecture Behavioral of spi_master is
 
-    constant CLOCK_DIV  : integer := (FREQ_SYS + FREQ_SPI/2)/FREQ_SPI;
-    constant CLOCK_HALF : integer := CLOCK_DIV/2;
+    -- Clock-related constants
+    constant CLOCK_DIV    : integer := (FREQ_SYS + FREQ_SPI/2)/FREQ_SPI;
+    constant CLOCK_HALF   : integer := CLOCK_DIV/2;
     constant DELAY_CYCLES : integer := FREQ_SYS / (2 * FREQ_SPI);
 
+    -- FSM states
     type state_t is (WAIT_CMD, WRITE_TX, READ_TX);
 
+    -- Register record type
     type spi_reg_t is record
         counter_spi   : integer range 0 to CLOCK_DIV-1;
         counter_bit   : integer range 0 to 3*DATA_WIDTH-1;
@@ -53,8 +56,37 @@ architecture Behavioral of spi_master is
     signal r, r_next : spi_reg_t;
     signal miso_sync, miso_async : std_logic;
 
+    -- Functions to prepare write/read data
+    function return_data_write(
+        cmd_instruction : std_logic_vector;
+        cmd_addr        : std_logic_vector;
+        cmd_data        : std_logic_vector
+    ) return std_logic_vector is
+    begin
+        return cmd_instruction & cmd_addr & cmd_data;
+    end function return_data_write;
+
+    function return_data_read(
+        cmd_instruction : std_logic_vector;
+        cmd_addr        : std_logic_vector
+    ) return std_logic_vector is
+    begin
+        return cmd_instruction & cmd_addr;
+    end function return_data_read;
+
+    -- Shift MSB-first procedure
+    procedure shift_data_msb (
+        signal current_data : in std_logic_vector;
+        variable next_data  : out std_logic_vector;
+        variable bit_out    : out std_logic
+    ) is
+    begin
+        bit_out := current_data(current_data'high);
+        next_data := current_data(current_data'high-1 downto 0) & '0';
+    end procedure shift_data_msb;
+
 begin
-    -- Outputs
+    -- Output assignments
     sclk      <= r.sclk;
     ss        <= r.ss;
     mosi      <= r.mosi;
@@ -76,12 +108,12 @@ begin
     begin
         if rising_edge(clk) then
             if rst = '1' then
-                r.state <= WAIT_CMD;
-                r.ss <= '1';
-                r.sclk <= '0';
+                r.state         <= WAIT_CMD;
+                r.ss            <= '1';
+                r.sclk          <= '0';
                 r.start_counter <= false;
-                r.counter_bit <= 0;
-                r.valid <= '0';
+                r.counter_bit   <= 0;
+                r.valid         <= '0';
             else
                 r <= r_next;
             end if;
@@ -103,8 +135,9 @@ begin
         end if;
 
         -- Edge detection
-        rising_sclk  := '1' when (v.sclk = '1' and r.sclk = '0') else '0';
-        falling_sclk := '1' when (v.sclk = '0' and r.sclk = '1') else '0';
+        rising_sclk := v.sclk and not r.sclk;
+        falling_sclk := not v.sclk and r.sclk;
+        
         falling_sclk_delayed := '0';
 
         -- Delay counter for MISO sampling
@@ -131,50 +164,46 @@ begin
         case r.state is
             when WAIT_CMD =>
                 v.cmd_ready := '1';
-                v.ss := '1';
-                v.sclk := '0';
+                v.ss        := '1';
+                v.sclk      := '0';
                 if cmd_valid = '1' and r.cmd_ready = '1' then
                     v.cmd_ready := '0';
-                    v.ss := '0';
+                    v.ss        := '0';
                     if cmd_instr = x"01" then
-                        v.state := WRITE_TX;
-                        v.write_data := cmd_instr & cmd_addr & cmd_data;
+                        v.state      := WRITE_TX;
+                        v.write_data := return_data_write(cmd_instr, cmd_addr, cmd_data);
                     else
-                        v.state := READ_TX;
-                        v.read_data := cmd_instr & cmd_addr;
+                        v.state     := READ_TX;
+                        v.read_data := return_data_read(cmd_instr, cmd_addr);
                     end if;
                 end if;
 
             when WRITE_TX =>
                 if rising_sclk = '1' then
-                    v.mosi := r.write_data(r.write_data'high);
-                    v.write_data := r.write_data(r.write_data'high-1 downto 0) & '0';
+                    shift_data_msb(r.write_data, v.write_data, v.mosi);
                     if r.counter_bit = 3*DATA_WIDTH-1 then
                         v.counter_bit := 0;
-                        v.state := WAIT_CMD;
+                        v.state       := WAIT_CMD;
                     else
                         v.counter_bit := r.counter_bit + 1;
                     end if;
                 end if;
 
             when READ_TX =>
-                -- MOSI shift
                 if rising_sclk = '1' then
                     if r.counter_bit < 2*DATA_WIDTH then
-                        v.mosi := r.read_data(r.read_data'high);
-                        v.read_data := r.read_data(r.read_data'high-1 downto 0) & '0';
+                        shift_data_msb(r.read_data, v.read_data, v.mosi);
                     end if;
                     v.counter_bit := r.counter_bit + 1;
                 end if;
 
-                -- MISO capture
                 if falling_sclk_delayed = '1' then
                     if r.counter_bit >= 2*DATA_WIDTH then
                         v.data := r.data(v.data'high-1 downto 0) & miso_sync;
                         if r.counter_bit = 3*DATA_WIDTH-1 then
                             v.counter_bit := 0;
-                            v.state := WAIT_CMD;
-                            v.valid := '1';
+                            v.state       := WAIT_CMD;
+                            v.valid       := '1';
                         end if;
                     end if;
                 end if;
