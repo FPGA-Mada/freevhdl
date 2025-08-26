@@ -42,10 +42,8 @@
 
 
 architecture AxiSendGet2 of TestCtrl is
-  use      osvvm.ScoreboardPkg_slv.all;
   signal   TestDone : integer_barrier := 1 ;
-  signal   SB : ScoreboardIDType;
-		
+  
 	procedure send_write(
 		addr_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
 	    data_in  : in  std_logic_vector(DATA_WIDTH -1 downto 0);
@@ -113,8 +111,9 @@ begin
 		wait until nReset = '1';
 		log("write data");
 		wait until cmd_ready = '1';  -- handshake
+		wait until rising_edge(clk);
 		send_write(x"04", x"FF",cmd_inst,cmd_addr,cmd_data,cmd_valid);
-		wait until cmd_ready = '0';
+		wait until rising_edge(clk);
 		cmd_valid <= '0';
 		WaitForBarrier(TestDone);
 		wait;
