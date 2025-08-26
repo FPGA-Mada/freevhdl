@@ -32,6 +32,17 @@ jobs:
           sudo make install
           cd ..
           ghdl --version
+          
+         
+      # Regression tests regression_axi4_stream_spi.tcl
+      - name: Run OSVVM regression_axi4_stream_UART test
+        run: |
+          set -e
+          tclsh script/regression_axi4_stream_spi.tcl 2>&1 | tee regression_axi4_stream_spi.log
+          if grep -q -e "FAILED" -e "FAILURE" -e "ERROR" regression_axi4_stream_spi.log; then
+            echo "❌ Test failed: regression_axi4_stream_spi.tcl"
+            exit 1
+          fi
 
       # Regression tests with precise failure handling
       - name: Run OSVVM regression_axi4_stream_UART test
