@@ -113,7 +113,6 @@ begin
 		wait until rising_edge(Clk);
 		send_write(x"04", x"FF",cmd_inst,cmd_addr,cmd_data,cmd_valid);
 		wait until rising_edge(Clk);
-		cmd_valid <= '0';
 		WaitForBarrier(TestDone);
 		wait;
 	end process write_cmd;
