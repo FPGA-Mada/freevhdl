@@ -60,8 +60,8 @@ begin
         variable ExpData : std_logic_vector(DATA_WIDTH-1 downto 0);
         variable RcvData : std_logic_vector(DATA_WIDTH-1 downto 0);
     begin
+        wait until nReset = '1';
         WaitForClock(StreamRxRec1, 2);
-
         ExpData := x"FF";
         Get(StreamRxRec1, RcvData);
         log("Data Received: " & to_hstring(RcvData));
