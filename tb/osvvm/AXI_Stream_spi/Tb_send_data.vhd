@@ -36,7 +36,7 @@ begin
     begin
         cmd_valid <= '0';
         wait until nReset = '1';
-        log("write data");
+        log("******************write data****************");
 
         -- wait for handshake
         wait until cmd_ready = '1';
@@ -47,8 +47,7 @@ begin
         cmd_addr  <= x"04";  -- address
         cmd_data  <= x"FF";  -- data
         cmd_valid <= '1';    -- handshake valid
-
-        wait until rising_edge(Clk);
+        log("******************write data done****************");
         WaitForBarrier(TestDone);
         wait;
     end process write_cmd;
