@@ -47,7 +47,7 @@ begin
         cmd_data  <= x"FF";  -- data
         cmd_valid <= '1';    -- handshake valid
         log("******************write data done****************");
-        wait unitl cmd_ready = '0';
+        wait until cmd_ready = '0';
         WaitForBarrier(TestDone);
         wait;
     end process write_cmd;
