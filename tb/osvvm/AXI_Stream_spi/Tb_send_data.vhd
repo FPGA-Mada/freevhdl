@@ -34,10 +34,9 @@ begin
     ------------------------------------------------------------
     write_cmd : process
     begin
-        cmd_valid <= '0';
         wait until nReset = '1';
+        cmd_valid <= '0';        
         log("******************write data****************");
-
         -- wait for handshake
         wait until cmd_ready = '1';
         wait until rising_edge(Clk);
@@ -48,6 +47,7 @@ begin
         cmd_data  <= x"FF";  -- data
         cmd_valid <= '1';    -- handshake valid
         log("******************write data done****************");
+        wait unitl cmd_ready = '0';
         WaitForBarrier(TestDone);
         wait;
     end process write_cmd;
