@@ -88,7 +88,6 @@ begin
     -- Wait for testbench initialization 
     wait for 0 ns;
     wait until nReset = '1' ; 
-	SB <= NEWID ("Score_Board"); 
     ClearAlerts;
     WaitForBarrier(TestDone, 100 ms);
     AlertIf(now >= 100 ms, "Test finished due to timeout");
@@ -111,9 +110,9 @@ begin
 		wait until nReset = '1';
 		log("write data");
 		wait until cmd_ready = '1';  -- handshake
-		wait until rising_edge(clk);
+		wait until rising_edge(Clk);
 		send_write(x"04", x"FF",cmd_inst,cmd_addr,cmd_data,cmd_valid);
-		wait until rising_edge(clk);
+		wait until rising_edge(Clk);
 		cmd_valid <= '0';
 		WaitForBarrier(TestDone);
 		wait;

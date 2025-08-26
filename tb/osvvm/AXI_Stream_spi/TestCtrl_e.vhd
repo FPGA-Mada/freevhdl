@@ -63,6 +63,7 @@ entity TestCtrl is
   port (
 
 	  nReset      : inout std_logic;
+	  Clk         : in std_logic;
       StreamRxRec : inout StreamRecType;
       StreamRxRec1: inout StreamRecType;
       cmd_inst    : out std_logic_vector(7 downto 0);
