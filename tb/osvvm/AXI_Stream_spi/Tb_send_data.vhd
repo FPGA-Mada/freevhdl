@@ -147,7 +147,7 @@ end AxiSendGet2 ;
 
 Configuration Tb_send_data of TestHarness_fifo is
   for TestHarness
-    for TestCtrl_5 : TestCtrl
+    for TestCtrl_1 : TestCtrl
       use entity work.TestCtrl(AxiSendGet2) ; 
     end for ; 
   end for ; 
