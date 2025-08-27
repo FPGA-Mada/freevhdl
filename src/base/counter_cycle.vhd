@@ -61,9 +61,9 @@ begin
   begin
     if rising_edge(clk) then
       if rst = '1' then
+        -- reset only flag and counter
         r.state    <= st_idle;
         r.counter  <= (others => '0');
-        r.cycles   <= (others => '0');
         r.overflow <= '0';
         r.valid    <= '0';
       else
