@@ -87,7 +87,6 @@ begin
           v.overflow := '1';
           v.cycles := r.counter; -- Capture max value on overflow
           v.valid := '1';
-          v.state := st_idle;
         else
           v.counter := r.counter + 1;
         end if;
