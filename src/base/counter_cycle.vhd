@@ -79,16 +79,14 @@ begin
         end if;
 
       when st_count =>
+        v.counter := r.counter +1;
         if stop = '1' then
           v.cycles := r.counter;
           v.valid := '1';
           v.state := st_idle;
         elsif r.counter = (2**BITS - 1) then
           v.overflow := '1';
-          v.cycles := r.counter; -- Capture max value on overflow
-          v.valid := '1';
-        else
-          v.counter := r.counter + 1;
+          v.counter := (others => '0');
         end if;
     end case;
 
