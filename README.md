@@ -2,7 +2,7 @@
 
 [![CI Status](https://github.com/FPGA-Mada/freevhdl/actions/workflows/ci.yml/badge.svg)](https://github.com/FPGA-Mada/freevhdl/actions)
 
-**FreeVHDL** is a curated collection of reusable, open-source VHDL modules and code snippets designed to accelerate hardware design, learning, and prototyping. This repository serves as a reliable resource for students, engineers, and FPGA/ASIC enthusiasts seeking high-quality, synthesizable VHDL components.
+**FreeVHDL** is a collection of reusable, open-source VHDL modules and code snippets designed to accelerate hardware design, learning, and prototyping. This repository serves as a reliable resource for students, engineers, and FPGA/ASIC enthusiasts seeking high-quality, synthesizable VHDL components.
 
 ---
 
