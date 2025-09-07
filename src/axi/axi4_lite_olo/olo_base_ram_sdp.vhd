@@ -216,7 +216,7 @@ architecture rtl of olo_private_ram_sdp_nobe is
 
     -- Memory  Type
     type Data_t is array (natural range<>) of std_logic_vector(Width_g - 1 downto 0);
-	signal Read_valid_t array (natural range<>) of std_logic;
+	signal Read_valid_t is array (natural range<>) of std_logic;
 
     -- Memory Initialization
     -- ... Cannot be moved to a package because VHDL93 (supported by all tools) does not allow
