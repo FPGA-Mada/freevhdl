@@ -121,20 +121,8 @@ begin
             Rd_Clk      => clk,
             Rd_Addr     =>  Rb_Addr (Rb_Addr'high downto 2),
             Rd_Ena      =>  Rb_Rd,
-            Rd_Data     => Rb_RdData
+            Rd_Data     => Rb_RdData,
+			Rd_Valid    => Rb_RdValid
         );
-
-	valid_proc : process (clk) 
-	  begin
-		if rising_edge (clk) then 
-			if rst = '1' then
-				Rb_Rd_d1 <= '0';
-				Rb_RdValid <= '0';
-			else 
-				Rb_Rd_d1 <= Rb_Rd;
-				Rb_RdValid <= Rb_Rd_d1;
-			end if;
-		end if;
-	  end process valid_proc;
 	  
 end architecture;

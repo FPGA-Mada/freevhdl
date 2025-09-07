@@ -53,7 +53,8 @@ entity olo_base_ram_sdp is
         Rd_Clk      : in    std_logic                                  := '0';
         Rd_Addr     : in    std_logic_vector(log2ceil(Depth_g) - 1 downto 0);
         Rd_Ena      : in    std_logic                                  := '1';
-        Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0)
+        Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0);
+		Rd_Valid    : out std_logic
     );
 end entity;
 
@@ -87,7 +88,8 @@ architecture rtl of olo_base_ram_sdp is
             Rd_Clk      : in    std_logic                                  := '0';
             Rd_Addr     : in    std_logic_vector(log2ceil(Depth_g) - 1 downto 0);
             Rd_Ena      : in    std_logic                                  := '1';
-            Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0)
+            Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0);
+			Rd_Valid    : out   std_logic
         );
     end component;
 
@@ -121,7 +123,8 @@ begin
                 Rd_Clk      => Rd_Clk,
                 Rd_Addr     => Rd_Addr,
                 Rd_Ena      => Rd_Ena,
-                Rd_Data     => Rd_Data
+                Rd_Data     => Rd_Data,
+				Rd_Valid    => Rd_Valid
             );
 
     end generate;
@@ -155,7 +158,8 @@ begin
                     Rd_Clk      => Rd_Clk,
                     Rd_Addr     => Rd_Addr,
                     Rd_Ena      => Rd_Ena,
-                    Rd_Data     => Rd_Data(byte*8+7 downto byte*8)
+                    Rd_Data     => Rd_Data(byte*8+7 downto byte*8),
+					Rd_Valid    => Rd_Valid
                 );
 
         end generate;
@@ -200,7 +204,8 @@ entity olo_private_ram_sdp_nobe is
         Rd_Clk      : in    std_logic := '0';
         Rd_Addr     : in    std_logic_vector(log2ceil(Depth_g) - 1 downto 0);
         Rd_Ena      : in    std_logic := '1';
-        Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0)
+        Rd_Data     : out   std_logic_vector(Width_g - 1 downto 0);
+		Rd_Valid    : out 	std_logic
     );
 end entity;
 
@@ -211,6 +216,7 @@ architecture rtl of olo_private_ram_sdp_nobe is
 
     -- Memory  Type
     type Data_t is array (natural range<>) of std_logic_vector(Width_g - 1 downto 0);
+	signal Read_valid_t array (natural range<>) of std_logic;
 
     -- Memory Initialization
     -- ... Cannot be moved to a package because VHDL93 (supported by all tools) does not allow
@@ -255,9 +261,11 @@ architecture rtl of olo_private_ram_sdp_nobe is
 
     -- Read registers
     signal RdPipe : Data_t(1 to RdLatency_g);
+	signal Rd_valid_Pipe : Read_valid_t(1 to RdLatency_g);
 
     -- Synthesis attributes - suppress shift register extraction
     attribute shreg_extract of RdPipe : signal is ShregExtract_SuppressExtraction_c;
+	attribute shreg_extract of Rd_valid_Pipe : signal is ShregExtract_SuppressExtraction_c;
 
     -- Synthesis attributes - control RAM style
     attribute ram_style of Mem_v    : variable is RamStyle_g;
@@ -283,6 +291,9 @@ begin
                 if RamBehavior_g = "RBW" then
                     if Rd_Ena = '1' then
                         RdPipe(1) <= Mem_v(to_integer(unsigned(Rd_Addr)));
+						Rd_valid_Pipe(1) <= '1';
+					else
+						Rd_valid_Pipe(1) <= '0';
                     end if;
                 end if;
                 if Wr_Ena = '1' then
@@ -291,11 +302,15 @@ begin
                 if RamBehavior_g = "WBR" then
                     if Rd_Ena = '1' then
                         RdPipe(1) <= Mem_v(to_integer(unsigned(Rd_Addr)));
+						Rd_valid_Pipe(1) <= '1';
+					else 
+						Rd_valid_Pipe(1) <= '0';
                     end if;
                 end if;
 
                 -- Read-data pipeline registers
                 RdPipe(2 to RdLatency_g) <= RdPipe(1 to RdLatency_g-1);
+				Rd_valid_Pipe(2 to RdLatency_g) <= Rd_valid_Pipe(1 to RdLatency_g-1);
             end if;
         end process;
 
@@ -310,6 +325,9 @@ begin
             if rising_edge(Clk) then
                 if Wr_Ena = '1' then
                     Mem_v(to_integer(unsigned(Wr_Addr))) := Wr_Data;
+					Rd_valid_Pipe(1) <= '1';
+				else
+					Rd_valid_Pipe(1) <= '0';
                 end if;
             end if;
         end process;
@@ -320,10 +338,14 @@ begin
             if rising_edge(Rd_Clk) then
                 if Rd_Ena = '1' then
                     RdPipe(1) <= Mem_v(to_integer(unsigned(Rd_Addr)));
+					Rd_valid_Pipe(1) <= '1';
+				else 
+					Rd_valid_Pipe(1) <= '0';
                 end if;
 
                 -- Read-data pipeline registers
                 RdPipe(2 to RdLatency_g) <= RdPipe(1 to RdLatency_g-1);
+				Rd_valid_Pipe(2 to RdLatency_g) <= Rd_valid_Pipe(1 to RdLatency_g-1);
             end if;
         end process;
 
@@ -331,6 +353,7 @@ begin
 
     -- Output
     Rd_Data <= RdPipe(RdLatency_g);
+	Rd_Valid <= Rd_valid_Pipe(RdLatency_g);
 
 end architecture;
 
