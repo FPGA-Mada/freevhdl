@@ -1,26 +1,3 @@
---------------------------------------------------------------------------------
--- Copyright (c) 2025 GMV
--- All Rights Reserved
---------------------------------------------------------------------------------
--- __ _ _ __ _____ __
--- / _` | '_ ` _ \ \ / / Company: GMV
--- | (_| | | | | | \ V / Author: Nambinina Rakotojaona
--- \__, |_| |_| |_|\_/ Module: ram_sp_valid_out
--- __/ |
--- |___/
---
--- Create Date: November 2025
--- Design Name: ML-KEM
--- Module Name: ram_sp_valid_out.vhd
--- Project Name: CyberCUBE
--- Target Devices: 
--- Tool versions: 
--- Description: 
--- Dependencies:
---
--- Revision 0.01 - File Created
--- Additional Comments:
-----------------------------------------------------------------------------------
 library IEEE;
     use IEEE.STD_LOGIC_1164.ALL;
     use IEEE.NUMERIC_STD.ALL;
