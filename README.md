@@ -79,6 +79,7 @@ Contributions are welcome! You can help by:
 - Improving existing modules or testbenches
 - Fixing bugs or optimizing code
 - Enhancing documentation
+- Want to propose some solutions
 
 Please submit issues or pull requests on GitHub.
 
